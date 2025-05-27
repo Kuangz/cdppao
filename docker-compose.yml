@@ -53,7 +53,7 @@ services:
       - whereisbin-networkrk
 volumes:
   mongo_data:
-
+  client_build:
 
 networks:
   whereisbin-network:
