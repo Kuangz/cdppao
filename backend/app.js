@@ -32,6 +32,11 @@ app.use(cors(corsOptions));
 app.use(express.json());
 app.use(cookieParser());
 
+if (!process.env.MONGO_URI) {
+  console.error("No MONGO_URI in environment! Exiting.");
+  process.exit(1);
+}
+
 mongoose.connect(process.env.MONGO_URI)
     .then(() => console.log('MongoDB connected'))
     .catch((err) => console.error(err));
