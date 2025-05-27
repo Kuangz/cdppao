@@ -1,0 +1,52 @@
+import React from "react";
+import { Table, Button } from "antd";
+import { PlusOutlined } from "@ant-design/icons";
+
+const columns = [
+    {
+        title: "ชื่อจุดติดตั้ง",
+        dataIndex: "locationName",
+        key: "locationName",
+        render: (text) => <span>{text}</span>,
+    },
+    {
+        title: "รหัสถัง",
+        dataIndex: ["currentBin", "serial"],
+        key: "serial",
+        render: (serial) => serial || "-",
+        width: 110,
+    },
+];
+
+const NearbyBinTable = ({ data, onSelect, onAdd }) => (
+    <>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <b>จุดติดตั้งใกล้ตำแหน่งคุณ (500 เมตร):</b>
+            <Button
+                type="primary"
+                icon={<PlusOutlined />}
+                onClick={onAdd}
+            >
+                เพิ่มจุดติดตั้ง
+            </Button>
+        </div>
+        <div style={{ marginTop: 14 }}>
+            <Table
+                columns={columns}
+                dataSource={data}
+                rowKey={(r) => r._id || r.locationName}
+                size="small"
+                bordered
+                pagination={false}
+                style={{ marginTop: 8 }}
+                locale={{ emptyText: "ไม่พบจุดใกล้เคียง" }}
+                onRow={record => ({
+                    onClick: () => onSelect(record),
+                    style: { cursor: "pointer" }
+                })}
+            />
+        </div>
+    </>
+);
+
+export default NearbyBinTable;
