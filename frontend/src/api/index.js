@@ -5,11 +5,13 @@ const USER_KEY = "username";
 const ROLE_KEY = "role";
 let accessToken = localStorage.getItem("accessToken") || "";
 let onAuthError = null;
+const SERVER_URL = process.env.REACT_APP_SERVER_URL || "http://localhost:5000";
+
 export const setOnAuthError = (fn) => { onAuthError = fn; };
 
 // --- สร้าง instance
 const api = axios.create({
-    baseURL: "http://localhost:5000", // แก้ตาม backend จริง
+    baseURL: SERVER_URL, // แก้ตาม backend จริง
     withCredentials: true,
 });
 
