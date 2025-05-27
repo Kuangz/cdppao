@@ -37,7 +37,7 @@ export const AuthProvider = ({ children }) => {
     const login = async (username, password, remember = false) => {
         setLoading(true);
         try {
-            const res = await api.post("/api/auth/login", { username, password });
+            const res = await api.post("/auth/login", { username, password });
             console.log(res)
             setAccessToken(res.data.accessToken);
             rememberUser(res.data.username, res.data.role || "user", remember);
@@ -54,7 +54,7 @@ export const AuthProvider = ({ children }) => {
     const logout = async () => {
         setLoading(true);
         try {
-            await api.post("/api/auth/logout");
+            await api.post("/auth/logout");
         } catch { }
         setAccessToken("");
         clearRememberedUser();
@@ -66,7 +66,7 @@ export const AuthProvider = ({ children }) => {
     const checkAuth = async () => {
         setLoading(true);
         try {
-            const res = await api.get("/api/auth/me"); // ถ้ามี API นี้
+            const res = await api.get("/auth/me"); // ถ้ามี API นี้
             setUser({ username: res.data.username, role: res.data.role });
             return true;
         } catch {

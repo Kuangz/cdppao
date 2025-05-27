@@ -13,7 +13,7 @@ const normalizePath = (raw) => {
 
 // fetch all points
 export const fetchBinPoints = () =>
-    api.get("/api/garbage-bins").then((res) => {
+    api.get("/garbage-bins").then((res) => {
         // assume res.data is an array
         const normalized = Array.isArray(res.data)
             ? res.data.map((pt) => ({
@@ -29,7 +29,7 @@ export const fetchBinPoints = () =>
 // fetch nearby points
 export const fetchBinPointNearBy = (lat, lng, radius = 500) =>
     api
-        .get("/api/garbage-bins/nearby", { params: { lat, lng, radius } })
+        .get("/garbage-bins/nearby", { params: { lat, lng, radius } })
         .then((res) => {
             const normalized = Array.isArray(res.data)
                 ? res.data.map((pt) => ({
@@ -44,7 +44,7 @@ export const fetchBinPointNearBy = (lat, lng, radius = 500) =>
 
 // fetch single point by id
 export const fetchBinPoint = (id) =>
-    api.get(`/api/garbage-bins/${id}`).then((res) => {
+    api.get(`/garbage-bins/${id}`).then((res) => {
         const pt = res.data || {};
         return {
             data: {
@@ -67,7 +67,7 @@ export const createBinPoint = (data, images) => {
         }
     });
     images.forEach((img) => formData.append("images", img));
-    return api.post("/api/garbage-bins", formData, {
+    return api.post("/garbage-bins", formData, {
         headers: { "Content-Type": "multipart/form-data" },
     });
 };
@@ -82,12 +82,12 @@ export const updateBinPoint = (id, data, images) => {
         }
     });
     images.forEach((img) => formData.append("images", img));
-    return api.put(`/api/garbage-bins/${id}`, formData, {
+    return api.put(`/garbage-bins/${id}`, formData, {
         headers: { "Content-Type": "multipart/form-data" },
     });
 };
 
-export const deleteBinPoint = (id) => api.delete(`/api/garbage-bins/${id}`);
+export const deleteBinPoint = (id) => api.delete(`/garbage-bins/${id}`);
 
 export const addBinHistory = (id, data) =>
-    api.post(`/api/garbage-bins/${id}/history`, data);
+    api.post(`/garbage-bins/${id}/history`, data);
