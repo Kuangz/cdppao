@@ -26,9 +26,10 @@ services:
     networks:
       - whereisbin-network
   backend:
-    build: /home/mserver/whereisbin/backend
-    dockerfile: Dockerfile
-    environment: 
+    build:
+      context: /home/mserver/whereisbin/backend
+      dockerfile: Dockerfile
+    environment:
       NODE_ENV: production
     volumes:
       - /home/mserver/whereisbin/backend:/usr/src/app
@@ -42,16 +43,17 @@ services:
       - whereisbin-network
   frontend:
     build:
-      context: /home/mserver/whereisbin/client
+      context: /home/mserver/whereisbin/frontend
       dockerfile: Dockerfile
     environment:
       - NODE_ENV=production
     volumes:
       - client_build:/app/dist
     networks:
-      - whereisbin-network
+      - whereisbin-networkrk
 volumes:
   mongo_data:
+
 
 networks:
   whereisbin-network:
