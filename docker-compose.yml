@@ -50,7 +50,7 @@ services:
     volumes:
       - client_build:/app/dist
     networks:
-      - whereisbin-networkrk
+      - whereisbin-network
 volumes:
   mongo_data:
   client_build:
