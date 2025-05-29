@@ -1,13 +1,13 @@
 // src/api/garbageBin.js
 import api from "../api";
 const SERVER_URL = process.env.IMAGE_URL || "http://localhost:5000";
+console.log(process.env.IMAGE_URL)
 
 const normalizePath = (raw) => {
     // 1) backslashes → forward slashes
     let p = raw.replace(/\\/g, "/");
     // 2) ensure it begins with a slash
     if (!p.startsWith("/")) p = "/" + p;
-    console.log(SERVER_URL + p)
     return SERVER_URL + p;
 };
 
