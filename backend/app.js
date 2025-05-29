@@ -1,4 +1,5 @@
 require('dotenv').config();
+console.log('MONGO_URI:', process.env.MONGO_URI);
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
@@ -10,7 +11,7 @@ const whitelist = [
     "http://localhost:3000",   // frontend local dev
     "https://yourdomain.com",
     "http://nginx",
-    "http://localhost:6066"   // เปลี่ยนเป็น domain จริงที่ต้องการ
+    "http://10.0.1.3:6066"   // เปลี่ยนเป็น domain จริงที่ต้องการ
 ];
 const corsOptions = {
     origin: function (origin, callback) {
