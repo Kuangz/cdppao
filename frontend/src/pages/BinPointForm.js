@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Form, Input, Button, Upload, Card, Divider } from "antd";
+import { Form, Input, Button, Upload, Card, Divider, Select } from "antd";
 import { PlusOutlined, ArrowLeftOutlined } from "@ant-design/icons";
 import { createBinPoint, updateBinPoint } from "../api/garbageBin";
 import { useMessageApi } from "../contexts/MessageContext";
@@ -8,7 +8,11 @@ import { useNavigate } from "react-router-dom";
 
 const DEFAULT_POSITION = { lat: 7.8804, lng: 98.3923 };
 const MAX_IMAGE_COUNT = 5;
-
+const BIN_TYPE = [
+    { value: 1, label: "ถังสีฟ้าทั่วไป" },
+    { value: 2, label: "จุดคัดแยกขยะ" },
+    { value: 3, label: "ถังขยะคอนเทนเนอร์" }
+];
 export default function BinPointForm({ point = null, onSuccess = () => { } }) {
     const [form] = Form.useForm();
     const navigate = useNavigate();
@@ -132,11 +136,15 @@ export default function BinPointForm({ point = null, onSuccess = () => { } }) {
                     <Input placeholder="ขนาด" size="large" />
                 </Form.Item>
                 <Form.Item
-                    label="รหัสถัง"
-                    name="serial"
-                    rules={[{ required: true, message: "กรุณาระบุรหัสถัง" }]}
+                    label="ประเภทถัง"
+                    name="size"
+                    rules={[{ required: true, message: "กรุณาระบุประเภทถัง" }]}
                 >
-                    <Input placeholder="รหัสถัง" size="large" />
+                    <Select
+                        placeholder="เลือกประเภทถัง"
+                        size="large"
+                        options={BIN_TYPE}
+                    />
                 </Form.Item>
 
                 <Form.Item label="รายละเอียด" name="description">

@@ -1,7 +1,17 @@
 import React, { useState } from "react";
-import { Descriptions, Image, Button, Table, Modal, Form, Input, message } from "antd";
+import { Descriptions, Image, Button, Table, Modal, Form, Input, message, Select } from "antd";
 import { addBinHistory } from "../api/garbageBin";
 
+const BIN_TYPE = [
+    { value: 1, label: "ถังสีฟ้าทั่วไป" },
+    { value: 2, label: "จุดคัดแยกขยะ" },
+    { value: 3, label: "ถังขยะคอนเทนเนอร์" }
+];
+const BIN_TYPE_LABEL = {
+    1: "ถังสีฟ้าทั่วไป",
+    2: "จุดคัดแยกขยะ",
+    3: "ถังขยะคอนเทนเนอร์"
+};
 
 const BinPointDetail = ({ point, onRefresh }) => {
     const [showHistoryForm, setShowHistoryForm] = useState(false);
@@ -10,7 +20,11 @@ const BinPointDetail = ({ point, onRefresh }) => {
 
     const handleAddHistory = async (values) => {
         try {
-            await addBinHistory(point._id, { ...values, updateCurrentBin: true });
+            await addBinHistory(point._id, {
+                ...values,
+                size: Number(values.size),
+                updateCurrentBin: true
+            });
             message.success("บันทึกประวัติถังแล้ว");
             setShowHistoryForm(false);
             onRefresh();
@@ -21,7 +35,11 @@ const BinPointDetail = ({ point, onRefresh }) => {
 
     const columns = [
         { title: "รหัสถัง", dataIndex: ["bin", "serial"] },
-        { title: "ขนาด", dataIndex: ["bin", "size"] },
+        {
+            title: "ขนาด",
+            dataIndex: ["bin", "size"],
+            render: (val) => BIN_TYPE_LABEL[val] || val
+        },
         { title: "สถานะ", dataIndex: ["bin", "status"] },
         { title: "วันที่เปลี่ยน", dataIndex: "changeDate", render: (v) => v && new Date(v).toLocaleString() },
         { title: "หมายเหตุ", dataIndex: "note" },
@@ -52,7 +70,9 @@ const BinPointDetail = ({ point, onRefresh }) => {
                 <Descriptions.Item label="ถังปัจจุบัน">
                     {point.currentBin ? (
                         <>
-                            <b>{point.currentBin.serial}</b> ({point.currentBin.size}) | สถานะ: {point.currentBin.status}
+                            <b>{point.currentBin.serial}</b>
+                            {" ("}{BIN_TYPE_LABEL[point.currentBin.size] || point.currentBin.size}{")"}
+                            {" | สถานะ: "}{point.currentBin.status}
                         </>
                     ) : "-"}
                 </Descriptions.Item>
@@ -65,8 +85,6 @@ const BinPointDetail = ({ point, onRefresh }) => {
                 rowKey={r => r._id || `${r.bin?.serial || ''}-${r.changeDate || ''}`}
                 style={{ marginTop: 8 }}
             />
-
-
             <Modal
                 open={showHistoryForm}
                 onCancel={() => setShowHistoryForm(false)}
@@ -79,7 +97,7 @@ const BinPointDetail = ({ point, onRefresh }) => {
                         <Input />
                     </Form.Item>
                     <Form.Item label="ขนาด" name="size" rules={[{ required: true }]}>
-                        <Input />
+                        <Select options={BIN_TYPE} placeholder="เลือกประเภทถัง" size="large" />
                     </Form.Item>
                     <Form.Item label="สถานะ" name="status">
                         <Input />

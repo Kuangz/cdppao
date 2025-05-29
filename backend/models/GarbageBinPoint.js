@@ -3,7 +3,11 @@ const mongoose = require('mongoose');
 const BinChangeHistorySchema = new mongoose.Schema({
     bin: {
         serial: { type: String, required: true },
-        size: { type: String, required: true },
+        size: {
+            type: Number,
+            required: true,
+            enum: [1, 2, 3] // จำกัดให้มีแค่ 1,2,3
+        },
         status: { type: String, default: "active" },
         imageUrls: [{ type: String }],
     },
@@ -32,7 +36,11 @@ const GarbageBinPointSchema = new mongoose.Schema({
     images: [{ type: String }],
     currentBin: {
         serial: { type: String, required: true },
-        size: { type: String, required: true },
+        size: {
+            type: Number,
+            required: true,
+            enum: [1, 2, 3] // จำกัดให้มีแค่ 1,2,3
+        },
         status: { type: String, default: "active" },
         imageUrls: [{ type: String }],
     },

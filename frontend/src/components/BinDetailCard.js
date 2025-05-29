@@ -9,6 +9,11 @@ import {
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 
+const BIN_TYPE_LABEL = {
+    1: "ถังสีฟ้าทั่วไป",
+    2: "จุดคัดแยกขยะ",
+    3: "ถังขยะคอนเทนเนอร์"
+};
 
 const BinDetailCard = ({ selectedPoint, onBack }) => {
     const navigate = useNavigate();
@@ -98,7 +103,7 @@ const BinDetailCard = ({ selectedPoint, onBack }) => {
                         {selectedPoint.currentBin?.serial || "-"}
                     </Descriptions.Item>
                     <Descriptions.Item label={<span><DatabaseOutlined /> ขนาด</span>} span={1}>
-                        {selectedPoint.currentBin?.size || "-"}
+                        {BIN_TYPE_LABEL[selectedPoint.currentBin?.size] || selectedPoint.currentBin?.size || "-"}
                     </Descriptions.Item>
                     <Descriptions.Item label="สถานะ" span={1}>
                         <Badge
