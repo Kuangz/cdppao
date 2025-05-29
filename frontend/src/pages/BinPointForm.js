@@ -129,11 +129,11 @@ export default function BinPointForm({ point = null, onSuccess = () => { } }) {
                     </Upload>
                 </Form.Item>
                 <Form.Item
-                    label="ประเภทถัง"
-                    name="size"
-                    rules={[{ required: true, message: "กรุณาระบุขนาด" }]}
+                    label="รหัสถัง"
+                    name="serial"
+                    rules={[{ required: true, message: "กรุณาระบุรหัสถัง" }]}
                 >
-                    <Input placeholder="ขนาด" size="large" />
+                    <Input placeholder="รหัสถัง" size="large" />
                 </Form.Item>
                 <Form.Item
                     label="ประเภทถัง"
@@ -150,13 +150,6 @@ export default function BinPointForm({ point = null, onSuccess = () => { } }) {
                 <Form.Item label="รายละเอียด" name="description">
                     <Input.TextArea rows={2} placeholder="รายละเอียด" />
                 </Form.Item>
-
-
-
-
-
-
-
                 <Form.Item>
                     <Button type="primary" htmlType="submit" block style={{ borderRadius: 12 }}>
                         {point ? "บันทึก" : "เพิ่ม"}
