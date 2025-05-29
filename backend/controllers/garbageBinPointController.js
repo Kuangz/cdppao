@@ -21,11 +21,11 @@ exports.getPoint = async (req, res) => {
     }
 };
 
-// -- CREATE
 exports.createPoint = async (req, res) => {
     try {
         const { locationName, description, lat, lng, currentBin } = req.body;
-        const images = req.files ? req.files.map(f => f.path) : [];
+        // เปลี่ยนตรงนี้!
+        const images = req.files ? req.files.map(f => '/uploads/garbage_bins/' + f.filename) : [];
         const point = await GarbageBinPoint.create({
             locationName,
             description,
