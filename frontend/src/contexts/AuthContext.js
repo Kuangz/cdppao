@@ -38,7 +38,6 @@ export const AuthProvider = ({ children }) => {
         setLoading(true);
         try {
             const res = await api.post("/auth/login", { username, password });
-            console.log(res)
             setAccessToken(res.data.accessToken);
             rememberUser(res.data.username, res.data.role || "user", remember);
             setUser({ username: res.data.username, role: res.data.role || "user" });
@@ -62,20 +61,21 @@ export const AuthProvider = ({ children }) => {
         setLoading(false);
     };
 
-    // สำหรับ check ว่ายัง login ไหม (optional ใช้กับ refresh token)
     const checkAuth = async () => {
         setLoading(true);
         try {
-            const res = await api.get("/auth/me"); // ถ้ามี API นี้
+            const res = await api.get("/auth/me");
             setUser({ username: res.data.username, role: res.data.role });
             return true;
-        } catch {
+        } catch (e) {
+            console.warn("checkAuth failed", e); // เพิ่ม debug
             setUser({ username: "", role: "" });
             return false;
         } finally {
             setLoading(false);
         }
     };
+
 
     return (
         <AuthContext.Provider

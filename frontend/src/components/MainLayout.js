@@ -1,21 +1,19 @@
 import React from "react";
-import { Layout, Menu, Button, Dropdown, Space, Grid } from "antd";
-import { HomeOutlined, DeleteOutlined, UserOutlined, LogoutOutlined } from "@ant-design/icons";
+import { Layout, Menu, Button, Dropdown, Space } from "antd";
+import { DeleteOutlined, UserOutlined, LogoutOutlined } from "@ant-design/icons";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
-const { useBreakpoint } = Grid;
 const { Header, Content, Footer } = Layout;
 
 const MainLayout = ({ children }) => {
     const location = useLocation();
     const { user, logout } = useAuth();
     const isLoggedIn = !!user?.username;
-    const screens = useBreakpoint();
     const menuItems = [
         {
             key: "/dashboard",
-            icon: <HomeOutlined />,
-            label: <Link to="/dashboard">หน้าหลัก</Link>,
+            icon: <DeleteOutlined />,
+            label: <Link to="/dashboard">Where is Bin ?</Link>,
         },
         {
             key: "/garbage-bins",
@@ -48,43 +46,6 @@ const MainLayout = ({ children }) => {
                     alignItems: "center",
                 }}
             >
-                <div
-                    style={{
-                        display: "flex",
-                        alignItems: "center",
-                        minWidth: 0,
-                        flexShrink: 1,
-                        marginRight: 16,
-                    }}
-                >
-                    <Link
-                        to="/"
-                        style={{
-                            color: "#01579b",
-                            display: "flex",
-                            alignItems: "center",
-                            minWidth: 0,
-                            textDecoration: "none",
-                        }}
-                    >
-                        <DeleteOutlined style={{ fontSize: 22, marginRight: 6, flexShrink: 0 }} />
-                        <span
-                            style={{
-                                fontWeight: "bold",
-                                fontSize: screens.xs ? 14 : 20,
-                                letterSpacing: 1,
-                                overflow: "hidden",
-                                textOverflow: "ellipsis",
-                                whiteSpace: "nowrap",
-                                minWidth: 0,
-                                maxWidth: screens.xs ? 70 : 150,
-                                display: "inline-block",
-                            }}
-                        >
-                            Where is Bin?
-                        </span>
-                    </Link>
-                </div>
                 <Menu
                     theme="light"
                     mode="horizontal"
