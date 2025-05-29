@@ -1,5 +1,6 @@
 require('dotenv').config();
-console.log('MONGO_URI:', process.env.MONGO_URI);
+console.log('MONGO_URI:', process.env.MONGO_URI); // 👈 LOG HERE
+
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
@@ -10,8 +11,9 @@ const path = require("path")
 const whitelist = [
     "http://localhost:3000",   // frontend local dev
     "https://yourdomain.com",
-    "http://nginx",
-    "http://10.0.1.3:6066"   // เปลี่ยนเป็น domain จริงที่ต้องการ
+    "http://10.0.1.3:6066",   // เปลี่ยนเป็น domain จริงที่ต้องการ
+    "https://whereisbin.phuketcity.go.th",
+    "http://localhost:6066",
 ];
 const corsOptions = {
     origin: function (origin, callback) {
@@ -28,14 +30,14 @@ const corsOptions = {
 
 
 const app = express();
-
+app.set('trust proxy', 1)
 app.use(cors(corsOptions));
 app.use(express.json());
 app.use(cookieParser());
 
 if (!process.env.MONGO_URI) {
-  console.error("No MONGO_URI in environment! Exiting.");
-  process.exit(1);
+    console.error("No MONGO_URI in environment! Exiting.");
+    process.exit(1);
 }
 
 mongoose.connect(process.env.MONGO_URI)

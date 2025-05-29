@@ -1,6 +1,6 @@
 // src/api/garbageBin.js
 import api from "../api";
-const SERVER_URL = process.env.REACT_APP_SERVER_URL || "http://localhost:5000";
+const SERVER_URL = process.env.IMAGE_URL || "http://localhost:5000";
 
 const normalizePath = (raw) => {
     // 1) backslashes → forward slashes

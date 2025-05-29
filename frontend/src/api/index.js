@@ -32,8 +32,8 @@ api.interceptors.response.use(
     async error => {
         const originalRequest = error.config;
         const loginUrls = [
-            "/api/auth/login",
-            "/api/auth/register"
+            "/auth/login",
+            "/auth/register"
         ];
 
         if (error.response
@@ -76,7 +76,7 @@ export const setAccessToken = (token) => {
 
 export const rememberUser = (username, role, remember) => {
     if (remember) {
-        console.log(remember)
+
         localStorage.setItem(USER_KEY, username);
         localStorage.setItem(ROLE_KEY, role);
         localStorage.setItem(REMEMBER_KEY, "1");

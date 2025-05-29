@@ -98,10 +98,6 @@ export default function BinPointForm({ point = null, onSuccess = () => { } }) {
                     <Input placeholder="ชื่อจุดติดตั้ง" size="large" />
                 </Form.Item>
 
-                <Form.Item label="รายละเอียด" name="description">
-                    <Input.TextArea rows={2} placeholder="รายละเอียด" />
-                </Form.Item>
-
                 <Form.Item label="ตำแหน่ง (เลือกบนแผนที่)">
                     <LocationPicker value={location} onChange={setLocation} />
                 </Form.Item>
@@ -109,7 +105,7 @@ export default function BinPointForm({ point = null, onSuccess = () => { } }) {
                 <Divider />
 
                 <Form.Item
-                    label="รูปภาพจุดติดตั้ง"
+                    label="รูปภาพถังขยะ"
                     name="images"
                     valuePropName="fileList"
                     getValueFromEvent={(e) => e?.fileList || []}
@@ -119,6 +115,7 @@ export default function BinPointForm({ point = null, onSuccess = () => { } }) {
                         multiple
                         beforeUpload={() => false}
                         accept="image/*"
+                        capture="environment"
                         maxCount={MAX_IMAGE_COUNT}
                     >
                         <div>
@@ -127,7 +124,13 @@ export default function BinPointForm({ point = null, onSuccess = () => { } }) {
                         </div>
                     </Upload>
                 </Form.Item>
-
+                <Form.Item
+                    label="ประเภทถัง"
+                    name="size"
+                    rules={[{ required: true, message: "กรุณาระบุขนาด" }]}
+                >
+                    <Input placeholder="ขนาด" size="large" />
+                </Form.Item>
                 <Form.Item
                     label="รหัสถัง"
                     name="serial"
@@ -136,13 +139,15 @@ export default function BinPointForm({ point = null, onSuccess = () => { } }) {
                     <Input placeholder="รหัสถัง" size="large" />
                 </Form.Item>
 
-                <Form.Item
-                    label="ขนาด"
-                    name="size"
-                    rules={[{ required: true, message: "กรุณาระบุขนาด" }]}
-                >
-                    <Input placeholder="ขนาด" size="large" />
+                <Form.Item label="รายละเอียด" name="description">
+                    <Input.TextArea rows={2} placeholder="รายละเอียด" />
                 </Form.Item>
+
+
+
+
+
+
 
                 <Form.Item>
                     <Button type="primary" htmlType="submit" block style={{ borderRadius: 12 }}>
