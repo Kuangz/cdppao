@@ -4,9 +4,18 @@ const garbageBinController = require('../controllers/garbageBinPointController')
 const multer = require('multer');
 const auth = require('../middleware/auth');
 const isAdmin = require('../middleware/isAdmin');
-// ---- Multer Config สำหรับอัพโหลดรูป (ปรับ path ได้)
+const fs = require('fs');
+const path = require('path');
+
+// ---- Ensure upload directory exists
+const uploadDir = path.join(__dirname, '..', 'uploads', 'garbage_bins');
+if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+// ---- Multer Config
 const storage = multer.diskStorage({
-    destination: (req, file, cb) => cb(null, 'uploads/garbage_bins/'),
+    destination: (req, file, cb) => cb(null, uploadDir),
     filename: (req, file, cb) => cb(null, Date.now() + '-' + file.originalname)
 });
 const upload = multer({ storage });
