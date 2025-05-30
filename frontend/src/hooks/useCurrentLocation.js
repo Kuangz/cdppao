@@ -1,44 +1,61 @@
-import React, { useState, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 
-const DEFAULT_POSITION = { lat: 7.8804, lng: 98.3923 };
+export default function useCurrentLocation(options = {}) {
+    // เก็บ options ครั้งแรกไว้ใน ref (คงที่ตลอดอายุของ hook นี้)
+    const optionsRef = useRef(options);
 
-export default function useCurrentLocation(auto = true) {
     const [location, setLocation] = useState(null);
-    const [locating, setLocating] = useState(false);
     const [error, setError] = useState(null);
+    const [loading, setLoading] = useState(true);
 
     const getCurrentLocation = useCallback(() => {
-        setLocating(true);
-        setError(null);
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(
-                (pos) => {
-                    setLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-                    setLocating(false);
-                },
-                (err) => {
-                    setLocation(DEFAULT_POSITION); // fallback ตอน error
-                    setError(err.message || "ไม่สามารถดึงตำแหน่งได้");
-                    setLocating(false);
-                }
-            );
-        } else {
-            setLocation(DEFAULT_POSITION); // fallback ถ้าไม่รองรับ
-            setError("ไม่รองรับ geolocation");
-            setLocating(false);
-        }
-    }, []);
+        setLoading(true);
 
-    // หากต้องการ auto ขอพิกัดครั้งแรก
-    React.useEffect(() => {
-        if (auto) getCurrentLocation();
-        // eslint-disable-next-line
-    }, []);
+        const fallbackToIP = async () => {
+            try {
+                const res = await fetch("https://ipapi.co/json/");
+                const data = await res.json();
+                setLocation({ lat: data.latitude, lng: data.longitude });
+            } catch (e) {
+                setError("Failed to get location from IP");
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        if (!navigator.geolocation) {
+            fallbackToIP();
+            return;
+        }
+
+        navigator.geolocation.getCurrentPosition(
+            (pos) => {
+                setLocation({
+                    lat: pos.coords.latitude,
+                    lng: pos.coords.longitude,
+                });
+                setError(null);
+                setLoading(false);
+            },
+            () => {
+                fallbackToIP();
+            },
+            {
+                enableHighAccuracy: false,
+                timeout: 5000,
+                maximumAge: 60000,
+                ...optionsRef.current, // ✅ ปลอดภัย ไม่ trigger loop
+            }
+        );
+    }, []); // ไม่มี dependency เพราะ options ไม่เปลี่ยน
+
+    useEffect(() => {
+        getCurrentLocation();
+    }, [getCurrentLocation]);
 
     return {
         location,
-        setLocation,   // ถ้าอยาก force set เองจาก parent
-        locating,
+        locating: loading,
         error,
         getCurrentLocation,
     };

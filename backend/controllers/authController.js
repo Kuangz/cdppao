@@ -49,6 +49,7 @@ exports.login = async (req, res) => {
         httpOnly: true,
         sameSite: 'strict',
         secure: process.env.NODE_ENV === 'production',
+        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 วัน (ms)
     });
     res.json({ accessToken, username: user.username, role: user.role });
 };

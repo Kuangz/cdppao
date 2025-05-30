@@ -19,7 +19,6 @@ const BinPointList = () => {
     const [deleteId, setDeleteId] = useState(null);
     const navigate = useNavigate();
     const { user } = useAuth(); // <-- ดึง user จาก context
-
     const loadPoints = useCallback(async () => {
         setLoading(true);
         try {
@@ -74,7 +73,7 @@ const BinPointList = () => {
                     </Button>
                     {/* แสดงปุ่มลบเฉพาะ admin */}
                     {user?.role === "admin" && (
-                        <Button danger onClick={() => handleDelete(r._id)} style={{ marginLeft: 8 }}>
+                        <Button size="small" danger onClick={() => handleDelete(r._id)} style={{ marginLeft: 8 }}>
                             ลบ
                         </Button>
                     )}

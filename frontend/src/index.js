@@ -7,17 +7,20 @@ import reportWebVitals from './reportWebVitals';
 import { AuthProvider } from "./contexts/AuthContext";
 import { MessageProvider } from './contexts/MessageContext';
 import { BrowserRouter } from "react-router-dom";
+import { LocationProvider } from "./contexts/LocationContext";
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
-    <MessageProvider>
-      <BrowserRouter>
-        <AuthProvider>
-          <App />
-        </AuthProvider>
-      </BrowserRouter>
-    </MessageProvider>
+    <LocationProvider>
+      <MessageProvider>
+        <BrowserRouter>
+          <AuthProvider>
+            <App />
+          </AuthProvider>
+        </BrowserRouter>
+      </MessageProvider>
+    </LocationProvider>
   </React.StrictMode>
 );
 

@@ -24,7 +24,6 @@ exports.getPoint = async (req, res) => {
 exports.createPoint = async (req, res) => {
     try {
         const { locationName, description, lat, lng, currentBin } = req.body;
-        // เปลี่ยนตรงนี้!
         const images = req.files ? req.files.map(f => '/uploads/garbage_bins/' + f.filename) : [];
         const point = await GarbageBinPoint.create({
             locationName,
@@ -45,29 +44,66 @@ exports.createPoint = async (req, res) => {
 // -- UPDATE
 exports.updatePoint = async (req, res) => {
     try {
-        const { locationName, description, lat, lng, currentBin } = req.body;
-        console.log(req.body)
-        const images = req.files ? req.files.map(f => f.path) : [];
+        const { locationName, description, lat, lng, currentBin, existingImages } = req.body;
+        // existingImages อาจเป็น array หรือ string
+        let keepImages = [];
+        if (existingImages) {
+            if (Array.isArray(existingImages)) {
+                keepImages = existingImages;
+            } else if (typeof existingImages === "string") {
+                keepImages = [existingImages];
+            }
+        }
+
+        // รูปใหม่ที่ upload
+        const newImages = req.files ? req.files.map(f => '/uploads/garbage_bins/' + f.filename) : [];
+        // รวมทั้งหมด
+        const allImages = [...keepImages, ...newImages];
+
+        // ลบไฟล์จริงที่ถูกลบออก (optional but practical)
+        const point = await GarbageBinPoint.findById(req.params.id);
+        if (!point) return res.status(404).json({ error: "Not found" });
+
+        // ตรวจสอบไฟล์ที่ต้องลบ
+        const removedImages = (point.images || []).filter(img => !allImages.includes(img));
+        removedImages.forEach(imgPath => {
+            // imgPath คือ '/uploads/garbage_bins/xxx.jpg'
+            const filePath = path.join(__dirname, '..', imgPath);
+            fs.unlink(filePath, err => { /* ไม่ต้องสนใจ error ถ้าไฟล์ไม่มี */ });
+        });
+
+        // เตรียม object สำหรับ update
         const update = {
             ...(locationName && { locationName }),
-            ...(description != undefined && { description }),
+            ...(description !== undefined && { description }),
             ...(lat && lng ? { coordinates: { type: "Point", coordinates: [Number(lng), Number(lat)] } } : {}),
-            ...(images.length ? { images } : {}),
+            images: allImages,
             ...(currentBin ? { currentBin: JSON.parse(currentBin) } : {})
         };
-        const point = await GarbageBinPoint.findByIdAndUpdate(req.params.id, update, { new: true });
-        if (!point) return res.status(404).json({ error: "Not found" });
-        res.json(point);
+
+        const updated = await GarbageBinPoint.findByIdAndUpdate(req.params.id, update, { new: true });
+        res.json(updated);
     } catch (err) {
         res.status(400).json({ error: err.message });
     }
 };
 
-// -- DELETE
 exports.deletePoint = async (req, res) => {
     try {
         const point = await GarbageBinPoint.findByIdAndDelete(req.params.id);
         if (!point) return res.status(404).json({ error: "Not found" });
+
+        // ลบไฟล์ทั้งหมดที่ผูกกับ images
+        if (Array.isArray(point.images)) {
+            point.images.forEach(imgPath => {
+                // imgPath อาจเป็น '/uploads/garbage_bins/xxx.jpg'
+                const filePath = path.join(__dirname, '..', imgPath);
+                fs.unlink(filePath, err => {
+                    // ไม่ต้อง throw error ถ้าไฟล์ไม่มี
+                });
+            });
+        }
+
         res.json({ message: "Deleted" });
     } catch (err) {
         res.status(400).json({ error: err.message });

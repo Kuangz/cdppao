@@ -29,7 +29,11 @@ function App() {
         <Routes>
           <Route path="/" element={<Navigate to="/dashboard" />} />
           <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
+          <Route path="/register" element={
+            <AdminRoute>
+              <Register />
+            </AdminRoute>
+          } />
           <Route
             path="/dashboard"
             element={

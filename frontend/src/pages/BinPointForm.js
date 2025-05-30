@@ -5,6 +5,7 @@ import { createBinPoint, updateBinPoint } from "../api/garbageBin";
 import { useMessageApi } from "../contexts/MessageContext";
 import LocationPicker from "../components/LocationPicker";
 import { useNavigate } from "react-router-dom";
+import imageCompression from "browser-image-compression";
 
 const DEFAULT_POSITION = { lat: 7.8804, lng: 98.3923 };
 const MAX_IMAGE_COUNT = 5;
@@ -17,32 +18,32 @@ export default function BinPointForm({ point = null, onSuccess = () => { } }) {
     const [form] = Form.useForm();
     const navigate = useNavigate();
     const messageApi = useMessageApi();
-
+    const [fileList, setFileList] = useState([]);
     // state เก็บตำแหน่งจาก LocationPicker (edit จะ set จาก point, create จะดึงอัตโนมัติ)
     const [location, setLocation] = useState(null);
 
-    // Sync initial data เมื่อ point (edit) เปลี่ยน
     useEffect(() => {
         if (point) {
-            // ดึง lat/lng จาก GeoJSON
             const [lng, lat] = point.coordinates?.coordinates || [];
-            setLocation({ lat, lng });
-            // กำหนดค่าเริ่มต้นในฟอร์ม
+            const pointLoc = { lat, lng };
+            setLocation(pointLoc);
+            const images = (point.images || []).map((url, i) => ({
+                uid: `init-${i}`,
+                name: url.split('/').pop(),
+                status: 'done',
+                url,
+            }));
+            setFileList(images);
             form.setFieldsValue({
                 locationName: point.locationName,
                 description: point.description,
                 serial: point.currentBin?.serial,
                 size: point.currentBin?.size,
-                images: point.images.map((url, i) => ({
-                    uid: `init-${i}`,
-                    name: url.split('/').pop(),
-                    status: 'done',
-                    url,
-                })),
+                images,
             });
         } else {
-            // สร้างใหม่: reset form และตำแหน่งให้ null เพื่อให้ LocationPicker ดึงเอง
             form.resetFields();
+            setFileList([]);
             setLocation(null);
         }
     }, [point, form]);
@@ -52,7 +53,7 @@ export default function BinPointForm({ point = null, onSuccess = () => { } }) {
             // เตรียมไฟล์รูปจาก Upload
             const fileList = values.images || [];
             const images = fileList.map((f) => f.originFileObj).filter(Boolean);
-            // ใช้ตำแหน่งจริง ถ้ามี มิฉะนั้น fallback เป็น DEFAULT
+            const existingUrls = fileList.filter(f => !f.originFileObj && f.url).map(f => f.url);
             const safeLocation =
                 location && typeof location.lat === "number" && typeof location.lng === "number"
                     ? location
@@ -65,8 +66,9 @@ export default function BinPointForm({ point = null, onSuccess = () => { } }) {
                 lng: safeLocation.lng,
                 currentBin: {
                     serial: values.serial,
-                    size: values.size
+                    size: values.size,
                 },
+                existingImages: existingUrls, // ส่ง url รูปเก่า
             };
 
             if (point) {
@@ -112,22 +114,44 @@ export default function BinPointForm({ point = null, onSuccess = () => { } }) {
                     label="รูปภาพถังขยะ"
                     name="images"
                     valuePropName="fileList"
-                    getValueFromEvent={(e) => e?.fileList || []}
+                    getValueFromEvent={() => fileList}
                 >
                     <Upload
                         listType="picture-card"
                         multiple
-                        beforeUpload={() => false}
                         accept="image/*"
                         capture="environment"
                         maxCount={MAX_IMAGE_COUNT}
+                        fileList={fileList}
+                        onChange={({ fileList: newFileList }) => {
+                            setFileList(newFileList);
+                            form.setFieldsValue({ images: newFileList }); // sync form
+                        }}
+                        beforeUpload={async (file) => {
+                            if (!file.type.startsWith("image/")) return false;
+                            const options = {
+                                maxSizeMB: 0.5,
+                                maxWidthOrHeight: 1024,
+                                useWebWorker: true,
+                            };
+                            try {
+                                const compressedFile = await imageCompression(file, options);
+                                compressedFile.uid = file.uid;
+                                return compressedFile;
+                            } catch (err) {
+                                return file;
+                            }
+                        }}
                     >
-                        <div>
-                            <PlusOutlined />
-                            <div style={{ fontSize: 12 }}>เพิ่มรูป</div>
-                        </div>
+                        {fileList.length < MAX_IMAGE_COUNT && (
+                            <div>
+                                <PlusOutlined />
+                                <div style={{ fontSize: 12 }}>เพิ่มรูป</div>
+                            </div>
+                        )}
                     </Upload>
                 </Form.Item>
+
                 <Form.Item
                     label="รหัสถัง"
                     name="serial"
@@ -166,6 +190,6 @@ export default function BinPointForm({ point = null, onSuccess = () => { } }) {
                 </Form.Item>
             </Form>
 
-        </Card>
+        </Card >
     );
 }
