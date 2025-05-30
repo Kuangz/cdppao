@@ -50,10 +50,18 @@ export default function BinPointForm({ point = null, onSuccess = () => { } }) {
 
     const handleFinish = async (values) => {
         try {
-            // เตรียมไฟล์รูปจาก Upload
+            const stripHost = (url) => {
+                const match = url.match(/(\/uploads\/garbage_bins\/.+)$/);
+                return match ? match[1] : url;
+            };
+
             const fileList = values.images || [];
             const images = fileList.map((f) => f.originFileObj).filter(Boolean);
-            const existingUrls = fileList.filter(f => !f.originFileObj && f.url).map(f => f.url);
+
+            const existingImages = fileList
+                .filter(f => !f.originFileObj && f.url)
+                .map(f => stripHost(f.url));
+
             const safeLocation =
                 location && typeof location.lat === "number" && typeof location.lng === "number"
                     ? location
@@ -68,7 +76,7 @@ export default function BinPointForm({ point = null, onSuccess = () => { } }) {
                     serial: values.serial,
                     size: values.size,
                 },
-                existingImages: existingUrls, // ส่ง url รูปเก่า
+                existingImages
             };
 
             if (point) {

@@ -1,4 +1,16 @@
+const fs = require('fs');
+const path = require('path');
 const GarbageBinPoint = require("../models/GarbageBinPoint");
+
+const uploadsRoot = path.join(__dirname, '..', 'uploads', 'garbage_bins');
+const unlinkAsync = async (imgPath) => {
+    const filePath = path.join(__dirname, '..', imgPath);
+    // ป้องกัน path traversal
+    if (filePath.startsWith(uploadsRoot)) {
+        return new Promise(resolve => fs.unlink(filePath, () => resolve()));
+    }
+    return Promise.resolve();
+};
 
 // -- GET All Points
 exports.listPoints = async (req, res) => {
@@ -41,7 +53,6 @@ exports.createPoint = async (req, res) => {
     }
 };
 
-// -- UPDATE
 exports.updatePoint = async (req, res) => {
     try {
         const { locationName, description, lat, lng, currentBin, existingImages } = req.body;
@@ -60,17 +71,13 @@ exports.updatePoint = async (req, res) => {
         // รวมทั้งหมด
         const allImages = [...keepImages, ...newImages];
 
-        // ลบไฟล์จริงที่ถูกลบออก (optional but practical)
+        // หา point เก่าก่อน update
         const point = await GarbageBinPoint.findById(req.params.id);
         if (!point) return res.status(404).json({ error: "Not found" });
 
         // ตรวจสอบไฟล์ที่ต้องลบ
         const removedImages = (point.images || []).filter(img => !allImages.includes(img));
-        removedImages.forEach(imgPath => {
-            // imgPath คือ '/uploads/garbage_bins/xxx.jpg'
-            const filePath = path.join(__dirname, '..', imgPath);
-            fs.unlink(filePath, err => { /* ไม่ต้องสนใจ error ถ้าไฟล์ไม่มี */ });
-        });
+        await Promise.all(removedImages.map(unlinkAsync));
 
         // เตรียม object สำหรับ update
         const update = {
@@ -93,15 +100,9 @@ exports.deletePoint = async (req, res) => {
         const point = await GarbageBinPoint.findByIdAndDelete(req.params.id);
         if (!point) return res.status(404).json({ error: "Not found" });
 
-        // ลบไฟล์ทั้งหมดที่ผูกกับ images
+        // ลบไฟล์ทั้งหมดที่ผูกกับ images (async)
         if (Array.isArray(point.images)) {
-            point.images.forEach(imgPath => {
-                // imgPath อาจเป็น '/uploads/garbage_bins/xxx.jpg'
-                const filePath = path.join(__dirname, '..', imgPath);
-                fs.unlink(filePath, err => {
-                    // ไม่ต้อง throw error ถ้าไฟล์ไม่มี
-                });
-            });
+            await Promise.all(point.images.map(unlinkAsync));
         }
 
         res.json({ message: "Deleted" });
@@ -109,6 +110,7 @@ exports.deletePoint = async (req, res) => {
         res.status(400).json({ error: err.message });
     }
 };
+
 
 // -- ADD Bin Change History (และ optionally update currentBin)
 exports.addBinHistory = async (req, res) => {
