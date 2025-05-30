@@ -7,14 +7,19 @@ import {
 } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { Button, Spin } from "antd";
-import L from "leaflet";
 import { useLocation } from "../contexts/LocationContext";
 
-// Fix icon
+import L from "leaflet";
+import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
+import markerIcon from "leaflet/dist/images/marker-icon.png";
+import markerShadow from "leaflet/dist/images/marker-shadow.png";
+
+// Fix Leaflet marker icon path (CRA, Vite, Production)
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
-    iconUrl: "https://unpkg.com/leaflet@1.9.3/dist/images/marker-icon.png",
-    shadowUrl: "https://unpkg.com/leaflet@1.9.3/dist/images/marker-shadow.png",
+    iconRetinaUrl: markerIcon2x,
+    iconUrl: markerIcon,
+    shadowUrl: markerShadow,
 });
 
 const DEFAULT_POSITION = { lat: 7.8804, lng: 98.3923 };
@@ -27,7 +32,11 @@ const ResetMapCenter = ({ center }) => {
     useEffect(() => {
         if (Array.isArray(center) && center.length === 2) {
             map.setView(center);
-            setTimeout(() => map.invalidateSize(), 200);
+            setTimeout(() => {
+                try {
+                    map.invalidateSize();
+                } catch { }
+            }, 200);
         }
     }, [center, map]);
     return null;
@@ -35,11 +44,7 @@ const ResetMapCenter = ({ center }) => {
 
 const LocationPicker = ({ value, onChange }) => {
     const mapRef = useRef(null);
-    const [position, setPosition] = useState(
-        isValidPos(value) ? value : null
-    );
-    const [overrideWithGeo, setOverrideWithGeo] = useState(false);
-
+    // position state ใช้ค่า initial จาก value หรือ context (geoLoc)
     const {
         location: geoLoc,
         locating,
@@ -47,32 +52,73 @@ const LocationPicker = ({ value, onChange }) => {
         getCurrentLocation,
     } = useLocation();
 
-    useEffect(() => {
-        if (isValidPos(value)) setPosition(value);
-    }, [value]);
+    // state ของ marker
+    const [position, setPosition] = useState(
+        isValidPos(value)
+            ? value
+            : isValidPos(geoLoc)
+                ? geoLoc
+                : null
+    );
+    const [overrideWithGeo, setOverrideWithGeo] = useState(false);
 
+    // sync เมื่อ value (prop) เปลี่ยน (เช่น edit)
     useEffect(() => {
-        if (!isValidPos(value)) getCurrentLocation();
-    }, [value, getCurrentLocation]);
+        if (
+            isValidPos(value) &&
+            (!isValidPos(position) ||
+                value.lat !== position.lat ||
+                value.lng !== position.lng)
+        ) {
+            setPosition(value);
+        }
+    }, [value, position]); // intentionallyไม่ใส่ position ใน dep เพื่อกัน loop
 
+    // ดึงตำแหน่งอัตโนมัติเมื่อ mount (value, position ยังไม่มี)
+    useEffect(() => {
+        if (!isValidPos(value) && !isValidPos(position)) {
+            getCurrentLocation();
+        }
+    }, [value, position, getCurrentLocation]);
+
+    // sync geoLoc → position (กรณี create/new หรือ context เปลี่ยน)
+    useEffect(() => {
+        if (!isValidPos(value) && isValidPos(geoLoc)) {
+            setPosition(geoLoc);
+            onChange?.(geoLoc);
+        }
+        // eslint-disable-next-line
+    }, [geoLoc, value, onChange]);
+
+    // ถ้ากดปุ่ม "ใช้ตำแหน่งปัจจุบัน" → override
     useEffect(() => {
         if (!isValidPos(geoLoc)) return;
+        if (overrideWithGeo) {
+            if (
+                !isValidPos(position) ||
+                geoLoc.lat !== position.lat ||
+                geoLoc.lng !== position.lng
+            ) {
+                setPosition(geoLoc);
+                onChange?.(geoLoc);
 
-        const newPos = { lat: geoLoc.lat, lng: geoLoc.lng };
-        const shouldOverride = !isValidPos(value) || overrideWithGeo;
-
-        if (shouldOverride) {
-            setPosition(newPos);
-            onChange?.(newPos);
-            if (mapRef.current) {
-                mapRef.current.setView([newPos.lat, newPos.lng], 17);
-                setTimeout(() => {
-                    mapRef.current.invalidateSize();
+                if (mapRef.current) {
+                    mapRef.current.setView([geoLoc.lat, geoLoc.lng], 17);
+                    setTimeout(() => {
+                        try {
+                            mapRef.current.invalidateSize();
+                        } catch { }
+                        setOverrideWithGeo(false);
+                    }, 200);
+                } else {
                     setOverrideWithGeo(false);
-                }, 200);
+                }
+            } else {
+                setOverrideWithGeo(false);
             }
         }
-    }, [geoLoc, overrideWithGeo, value, onChange]);
+        // eslint-disable-next-line
+    }, [geoLoc, overrideWithGeo]);
 
     const handleUseCurrent = () => {
         setOverrideWithGeo(true);
@@ -115,7 +161,6 @@ const LocationPicker = ({ value, onChange }) => {
                     ใช้ตำแหน่งปัจจุบัน
                 </Button>
             </div>
-
             <Spin spinning={locating}>
                 <MapContainer
                     center={center}

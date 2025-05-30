@@ -19,8 +19,8 @@ export default function BinPointForm({ point = null, onSuccess = () => { } }) {
     const navigate = useNavigate();
     const messageApi = useMessageApi();
     const [fileList, setFileList] = useState([]);
-    // state เก็บตำแหน่งจาก LocationPicker (edit จะ set จาก point, create จะดึงอัตโนมัติ)
-    const [location, setLocation] = useState(null);
+
+    const [location, setLocation] = useState(undefined); 
 
     useEffect(() => {
         if (point) {
@@ -44,7 +44,7 @@ export default function BinPointForm({ point = null, onSuccess = () => { } }) {
         } else {
             form.resetFields();
             setFileList([]);
-            setLocation(null);
+            setLocation(undefined);
         }
     }, [point, form]);
 
