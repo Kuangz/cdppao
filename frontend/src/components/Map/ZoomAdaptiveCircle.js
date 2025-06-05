@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Marker, Popup, useMap } from "react-leaflet";
+import { Marker, Popup, useMap, Circle } from "react-leaflet";
 import L from "leaflet";
 
 const ZoomAdaptiveMarker = ({ center }) => {
@@ -14,7 +14,7 @@ const ZoomAdaptiveMarker = ({ center }) => {
         let size = 12 + (zoom - 13) * 1.6;
         size = Math.round(size);
         size = Math.max(12, Math.min(size, 20));
-        
+
         setIcon(
             new L.Icon({
                 iconUrl: "https://cdn.jsdelivr.net/gh/pointhi/leaflet-color-markers@master/img/marker-icon-green.png",
@@ -39,23 +39,41 @@ const ZoomAdaptiveMarker = ({ center }) => {
     }
 
     return (
-        <Marker
-            position={center}
-            icon={icon}
-            eventHandlers={{
-                click: () => setShowPopup(true)
-            }}
-        >
-            {showPopup && (
-                <Popup
-                    position={center}
-                    onClose={() => setShowPopup(false)}
-                >
-                    ตำแหน่งของคุณ<br />
-                    พิกัด: {center[0]}, {center[1]}
-                </Popup>
-            )}
-        </Marker>
+        <>
+            {/* วงกลมรัศมี 500 เมตร */}
+            <Circle
+                center={center}
+                radius={300}
+                pathOptions={{
+                    color: "#1976d2",
+                    fillColor: "#1976d2",
+                    fillOpacity: 0.15,
+                    weight: 2,
+                }}
+            />
+
+            <Marker
+                position={center}
+                icon={icon}
+                eventHandlers={{
+                    click: () => setShowPopup(true)
+                }}
+            >
+                {showPopup && (
+                    <Popup
+                        position={center}
+                        onClose={() => setShowPopup(false)}
+                    >
+                        <span style={{ fontFamily: "Noto Sans Thai, sans-serif" }}>
+                            <strong>
+                                ตำแหน่งของคุณ<br />
+                            </strong>
+                            พิกัด: {center[0]}, {center[1]}
+                        </span>
+                    </Popup>
+                )}
+            </Marker>
+        </>
     );
 };
 

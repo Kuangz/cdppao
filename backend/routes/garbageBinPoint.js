@@ -20,16 +20,22 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
+// -- Geospatial (find nearby)
 router.get("/nearby", auth, garbageBinController.getNearbyPoints);
+router.get("/map", auth, garbageBinController.listPointsForMap);
 
+// -- List all / get one
 router.get('/', auth, garbageBinController.listPoints);
 router.get('/:id', auth, garbageBinController.getPoint);
 
+// -- Create / update point (info + images)
 router.post('/', auth, upload.array('images', 10), garbageBinController.createPoint);
 router.put('/:id', auth, upload.array('images', 10), garbageBinController.updatePoint);
+
+// -- Soft delete (admin only)
 router.delete('/:id', [auth, isAdmin], garbageBinController.deletePoint);
 
-// เพิ่ม API สำหรับ add/change bin history
-router.post('/:id/history', auth, garbageBinController.addBinHistory);
+// -- เปลี่ยนสถานะถัง/แจ้งเหตุการณ์ทุกชนิด (action = broken/lost/replaced/installed/removed)
+router.post('/:id/status', auth, upload.array('images', 5), garbageBinController.changeBinStatus);
 
 module.exports = router;

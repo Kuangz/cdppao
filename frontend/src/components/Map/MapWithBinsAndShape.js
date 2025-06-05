@@ -6,11 +6,12 @@ import ZoomAdaptiveCircle from "./ZoomAdaptiveCircle";
 import SetMapCenter from "./SetMapCenter";
 import GeoJsonShape from "./GeoJsonShape";
 import { ZoomToDefaultButton } from "./ZoomToDefault"; // Optional: ปุ่มรีเซ็ตซูม
+import StatusBadge from "../StatusBadge";
 
 
 const MapWithBinsAndShape = ({
     binPoints = [],
-    selectedPoint,
+    selectedPointId,
     onSelectPoint,
     currentLocation,
     loading,
@@ -68,16 +69,20 @@ const MapWithBinsAndShape = ({
                                 pt.coordinates.coordinates[1],
                                 pt.coordinates.coordinates[0],
                             ]}
-                            isSelected={selectedPoint && selectedPoint._id === pt._id}
+                            status={pt.currentBin?.status}
+                            isSelected={selectedPointId && selectedPointId === pt._id}
                             onClick={() => onSelectPoint && onSelectPoint(pt)}
                             popupContent={
-                                <>
+                                <span style={{ fontFamily: 'Noto Sans Thai, sans-serif' }}>
                                     <b>{pt.locationName}</b>
                                     <br />
-                                    Serial: {pt.currentBin?.serial}
-                                    <br />
-                                    Status: {pt.currentBin.status}
-                                </>
+                                    {pt.currentBin ? <>
+                                        <b>รหัสถัง</b>: {pt.currentBin?.serial}
+                                        <br />
+                                        <b>สถานะ</b>: <StatusBadge status={pt.currentBin?.status} />
+                                    </> : "นำถังขยะออก"
+                                    }
+                                </span>
                             }
                         />
                     ))}

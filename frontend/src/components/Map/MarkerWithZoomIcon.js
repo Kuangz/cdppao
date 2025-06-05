@@ -4,26 +4,44 @@ import ReactDOMServer from "react-dom/server";
 import L from "leaflet";
 import { DeleteOutlined } from "@ant-design/icons";
 
-const MarkerWithZoomIcon = ({ position, isSelected, onClick, popupContent }) => {
+// Status to color
+const BIN_STATUS_COLOR = {
+    active: "#388e3c",
+    broken: "#e53935",
+    lost: "#ffa726",
+    removed: "#616161",
+    replaced: "#1976d2",
+    installed: "#00bcd4",
+    deleted: "#bdbdbd"
+};
+
+const MarkerWithZoomIcon = ({
+    position,
+    status,
+    isSelected,
+    onClick,
+    popupContent
+}) => {
     const [icon, setIcon] = useState(null);
     const map = useMap();
 
     const updateIcon = useCallback((zoom = 14) => {
         let size = 12 + (zoom - 10) * 2;
         size = Math.round(size);
-        size = Math.max(15, Math.min(size, 30));
+        size = Math.max(15, Math.min(size, 32));
+        const color = BIN_STATUS_COLOR[status] || "#bdbdbd";
+
         setIcon(
             new L.DivIcon({
                 html: ReactDOMServer.renderToString(
                     <div
                         style={{
-                            background: isSelected
-                                ? "linear-gradient(135deg, #156834 70%, #388e3c 100%)" // เขียวเข้ม → เขียวกลาง
-                                : "rgba(255,255,255,0.97)",
+                            background: isSelected ? color : "#fff",
+                            border: `2.2px solid ${color}`,
                             borderRadius: "50%",
                             boxShadow: isSelected
-                                ? "0 2px 18px #15683499"
-                                : "0 2px 8px #b0c4b1a1",
+                                ? `0 2px 14px ${color}55`
+                                : "0 1px 7px #bdbdbd99",
                             width: size,
                             height: size,
                             display: "flex",
@@ -34,12 +52,12 @@ const MarkerWithZoomIcon = ({ position, isSelected, onClick, popupContent }) => 
                     >
                         <DeleteOutlined
                             style={{
-                                color: isSelected ? "#fff" : "#388e3c",
+                                color: isSelected ? "#fff" : color,
                                 fontSize: size * 0.7,
+                                transition: "color 0.18s"
                             }}
                         />
                     </div>
-
                 ),
                 className: "",
                 iconSize: [size, size],
@@ -47,19 +65,16 @@ const MarkerWithZoomIcon = ({ position, isSelected, onClick, popupContent }) => 
                 popupAnchor: [0, -size / 1.7],
             })
         );
-    }, [isSelected]);
+    }, [isSelected, status]);
 
-    // อัพเดท icon ตอน zoom เปลี่ยน
     useEffect(() => {
         if (!map) return;
         const onZoom = () => updateIcon(map.getZoom());
         map.on("zoomend", onZoom);
-        // initial set
         updateIcon(map.getZoom());
         return () => map.off("zoomend", onZoom);
     }, [map, updateIcon]);
 
-    // ป้องกันพิกัดผิด (undefined/null)
     if (
         !position ||
         typeof position[0] !== "number" ||

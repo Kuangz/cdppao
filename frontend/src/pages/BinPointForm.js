@@ -20,14 +20,14 @@ export default function BinPointForm({ point = null, onSuccess = () => { } }) {
     const messageApi = useMessageApi();
     const [fileList, setFileList] = useState([]);
 
-    const [location, setLocation] = useState(undefined); 
+    const [location, setLocation] = useState(undefined);
 
     useEffect(() => {
         if (point) {
             const [lng, lat] = point.coordinates?.coordinates || [];
             const pointLoc = { lat, lng };
             setLocation(pointLoc);
-            const images = (point.images || []).map((url, i) => ({
+            const images = (point.currentBin?.imageUrls || []).map((url, i) => ({
                 uid: `init-${i}`,
                 name: url.split('/').pop(),
                 status: 'done',
@@ -72,10 +72,8 @@ export default function BinPointForm({ point = null, onSuccess = () => { } }) {
                 description: values.description || "",
                 lat: safeLocation.lat,
                 lng: safeLocation.lng,
-                currentBin: {
-                    serial: values.serial,
-                    size: values.size,
-                },
+                serial: values.serial || "",
+                size: values.size || "",
                 existingImages
             };
 
@@ -117,68 +115,72 @@ export default function BinPointForm({ point = null, onSuccess = () => { } }) {
                 </Form.Item>
 
                 <Divider />
+                {!point || (point && point?.currentBin !== undefined) ? <>
 
-                <Form.Item
-                    label="รูปภาพถังขยะ"
-                    name="images"
-                    valuePropName="fileList"
-                    getValueFromEvent={() => fileList}
-                >
-                    <Upload
-                        listType="picture-card"
-                        multiple
-                        accept="image/*"
-                        capture="environment"
-                        maxCount={MAX_IMAGE_COUNT}
-                        fileList={fileList}
-                        onChange={({ fileList: newFileList }) => {
-                            setFileList(newFileList);
-                            form.setFieldsValue({ images: newFileList }); // sync form
-                        }}
-                        beforeUpload={async (file) => {
-                            if (!file.type.startsWith("image/")) return false;
-                            const options = {
-                                maxSizeMB: 0.5,
-                                maxWidthOrHeight: 1024,
-                                useWebWorker: true,
-                            };
-                            try {
-                                const compressedFile = await imageCompression(file, options);
-                                compressedFile.uid = file.uid;
-                                return compressedFile;
-                            } catch (err) {
-                                return file;
-                            }
-                        }}
+                    <Form.Item
+                        label="รูปภาพถังขยะ"
+                        name="images"
+                        valuePropName="fileList"
+                        getValueFromEvent={() => fileList}
                     >
-                        {fileList.length < MAX_IMAGE_COUNT && (
-                            <div>
-                                <PlusOutlined />
-                                <div style={{ fontSize: 12 }}>เพิ่มรูป</div>
-                            </div>
-                        )}
-                    </Upload>
-                </Form.Item>
+                        <Upload
+                            listType="picture-card"
+                            multiple
+                            accept="image/*"
+                            capture="environment"
+                            maxCount={MAX_IMAGE_COUNT}
+                            fileList={fileList}
+                            onChange={({ fileList: newFileList }) => {
+                                setFileList(newFileList);
+                                form.setFieldsValue({ images: newFileList }); // sync form
+                            }}
+                            beforeUpload={async (file) => {
+                                if (!file.type.startsWith("image/")) return false;
+                                const options = {
+                                    maxSizeMB: 0.5,
+                                    maxWidthOrHeight: 1024,
+                                    useWebWorker: true,
+                                };
+                                try {
+                                    const compressedFile = await imageCompression(file, options);
+                                    compressedFile.uid = file.uid;
+                                    return compressedFile;
+                                } catch (err) {
+                                    return file;
+                                }
+                            }}
+                        >
+                            {fileList.length < MAX_IMAGE_COUNT && (
+                                <div>
+                                    <PlusOutlined />
+                                    <div style={{ fontSize: 12 }}>เพิ่มรูป</div>
+                                </div>
+                            )}
+                        </Upload>
+                    </Form.Item>
 
-                <Form.Item
-                    label="รหัสถัง"
-                    name="serial"
-                    rules={[{ required: true, message: "กรุณาระบุรหัสถัง" }]}
-                >
-                    <Input placeholder="รหัสถัง" size="large" />
-                </Form.Item>
-                <Form.Item
-                    label="ประเภทถัง"
-                    name="size"
-                    rules={[{ required: true, message: "กรุณาระบุประเภทถัง" }]}
-                >
-                    <Select
-                        placeholder="เลือกประเภทถัง"
-                        size="large"
-                        options={BIN_TYPE}
-                    />
-                </Form.Item>
+                    <Form.Item
+                        label="รหัสถัง"
+                        name="serial"
+                        rules={[{ required: true, message: "กรุณาระบุรหัสถัง" }]}
+                    >
+                        <Input placeholder="รหัสถัง" size="large" />
+                    </Form.Item>
+                    <Form.Item
+                        label="ประเภทถัง"
+                        name="size"
+                        initialValue={1} // Default เฉพาะฟิลด์นี้
+                        rules={[{ required: true, message: "กรุณาระบุประเภทถัง" }]}
+                    >
+                        <Select
+                            placeholder="เลือกประเภทถัง"
+                            size="large"
+                            options={BIN_TYPE}
+                        />
+                    </Form.Item>
 
+                </> : ""
+                }
                 <Form.Item label="รายละเอียด" name="description">
                     <Input.TextArea rows={2} placeholder="รายละเอียด" />
                 </Form.Item>

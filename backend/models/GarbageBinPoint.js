@@ -1,18 +1,34 @@
 const mongoose = require('mongoose');
 
+const BinSchema = new mongoose.Schema({
+    serial: { type: String, required: true },
+    size: { type: Number, required: true, enum: [1, 2, 3] },
+    status: {
+        type: String,
+        enum: ["active", "broken", "lost", "replaced", "removed", "deleted"],
+        default: "active"
+    },
+    imageUrls: [{ type: String }],
+    installedAt: { type: Date, default: Date.now },   // วันที่ติดตั้ง/เปลี่ยนถัง
+}, { _id: false });
+
 const BinChangeHistorySchema = new mongoose.Schema({
-    bin: {
-        serial: { type: String, required: true },
-        size: {
-            type: Number,
-            required: true,
-            enum: [1, 2, 3] // จำกัดให้มีแค่ 1,2,3
-        },
-        status: { type: String, default: "active" },
-        imageUrls: [{ type: String }],
+    bin: BinSchema, // สถานะ/รายละเอียด bin ที่เกิดขึ้น
+    action: {
+        type: String,
+        enum: [
+            "installed",     // ติดตั้งใหม่
+            "active",     // ใช้งาน
+            "broken",        // แจ้งชำรุด
+            "lost",          // แจ้งหาย
+            "replaced",      // เปลี่ยนถัง
+            "removed",       // นำถังออก
+            "deleted"        // soft delete
+        ],
+        required: true
     },
     changeDate: { type: Date, default: Date.now },
-    note: { type: String },
+    note: { type: String }
 }, { _id: false });
 
 const GarbageBinPointSchema = new mongoose.Schema({
@@ -20,11 +36,11 @@ const GarbageBinPointSchema = new mongoose.Schema({
     description: { type: String },
     coordinates: {
         type: {
-            type: String, // Don't do `{ location: { type: String } }`
-            enum: ['Point'], // 'location.type' must be 'Point'
+            type: String,
+            enum: ['Point'],
             required: true
         },
-        coordinates: { // [lng, lat]
+        coordinates: {
             type: [Number],
             required: true,
             validate: {
@@ -33,23 +49,13 @@ const GarbageBinPointSchema = new mongoose.Schema({
             }
         }
     },
-    images: [{ type: String }],
-    currentBin: {
-        serial: { type: String, required: true },
-        size: {
-            type: Number,
-            required: true,
-            enum: [1, 2, 3] // จำกัดให้มีแค่ 1,2,3
-        },
-        status: { type: String, default: "active" },
-        imageUrls: [{ type: String }],
-    },
+    images: [{ type: String }], // ภาพของ "จุด"
+    currentBin: BinSchema,      // bin ที่ใช้งานปัจจุบัน (หรือ null ถ้าไม่มีถัง)
     history: [BinChangeHistorySchema],
     createdAt: { type: Date, default: Date.now },
     updatedAt: { type: Date, default: Date.now }
 });
 
-// เพิ่ม geospatial index
 GarbageBinPointSchema.index({ coordinates: '2dsphere' });
 
 module.exports = mongoose.model('GarbageBinPoint', GarbageBinPointSchema);
