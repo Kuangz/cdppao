@@ -12,6 +12,8 @@ import BinPointList from "./pages/BinPointList";
 import BinPointCreatePage from "./pages/BinPointCreatePage";
 import BinPointEditPage from "./pages/BinPointEditPage";
 import MainLayout from "./components/MainLayout";
+import ChangePasswordForm from "./components/ChangePasswordForm";
+import UserManagement from "./pages/UserManagement";
 
 function App() {
   return (
@@ -26,6 +28,12 @@ function App() {
             <Register />
           </AdminRoute>
         } />
+        <Route path="/change-password" element={
+          <ProtectedRoute>
+            <ChangePasswordForm />
+          </ProtectedRoute>
+        } />
+
         <Route
           path="/dashboard"
           element={
@@ -67,6 +75,14 @@ function App() {
             </AdminRoute>
           }
         />
+
+        <Route path="/user-management"
+          element={
+            <AdminRoute>
+              <UserManagement />
+            </AdminRoute>
+          } />
+
         <Route path="*" element={<NotFound />} />
       </Routes>
     </MainLayout>

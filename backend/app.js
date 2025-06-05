@@ -6,6 +6,7 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const garbageBinRoutes = require('./routes/garbageBinPoint.js');
+const userRoutes = require("./routes/user.js")
 const path = require("path")
 
 const whitelist = [
@@ -53,6 +54,7 @@ app.get('/api/protected', auth, (req, res) => {
 });
 
 app.use('/api/garbage-bins', garbageBinRoutes);
+app.use('/api/users', userRoutes);
 
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 

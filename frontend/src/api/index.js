@@ -3,6 +3,8 @@ import axios from "axios";
 const REMEMBER_KEY = "rememberMe";
 const USER_KEY = "username";
 const ROLE_KEY = "role";
+const DISPLAY_NAME_KEY = "displayName";
+
 let accessToken = localStorage.getItem("accessToken") || "";
 let onAuthError = null;
 const SERVER_URL = process.env.REACT_APP_SERVER_URL || "http://localhost:5000";
@@ -74,15 +76,16 @@ export const setAccessToken = (token) => {
     else localStorage.removeItem("accessToken");
 };
 
-export const rememberUser = (username, role, remember) => {
+export const rememberUser = (username, role, displayName, remember) => {
     if (remember) {
-
         localStorage.setItem(USER_KEY, username);
         localStorage.setItem(ROLE_KEY, role);
+        localStorage.setItem(DISPLAY_NAME_KEY, displayName || "");
         localStorage.setItem(REMEMBER_KEY, "1");
     } else {
         sessionStorage.setItem(USER_KEY, username);
         sessionStorage.setItem(ROLE_KEY, role);
+        sessionStorage.setItem(DISPLAY_NAME_KEY, displayName || "");
         localStorage.removeItem(REMEMBER_KEY);
     }
 };
@@ -91,12 +94,14 @@ export const getRememberedUser = () => {
     if (localStorage.getItem(REMEMBER_KEY)) {
         return {
             username: localStorage.getItem(USER_KEY) || "",
-            role: localStorage.getItem(ROLE_KEY) || "user"
+            role: localStorage.getItem(ROLE_KEY) || "user",
+            displayName: localStorage.getItem(DISPLAY_NAME_KEY) || ""
         };
     }
     return {
         username: sessionStorage.getItem(USER_KEY) || "",
-        role: sessionStorage.getItem(ROLE_KEY) || "user"
+        role: sessionStorage.getItem(ROLE_KEY) || "user",
+        displayName: sessionStorage.getItem(DISPLAY_NAME_KEY) || ""
     };
 };
 
@@ -104,8 +109,9 @@ export const clearRememberedUser = () => {
     localStorage.removeItem(USER_KEY);
     localStorage.removeItem(ROLE_KEY);
     localStorage.removeItem(REMEMBER_KEY);
+    localStorage.removeItem(DISPLAY_NAME_KEY);
     sessionStorage.removeItem(USER_KEY);
     sessionStorage.removeItem(ROLE_KEY);
+    sessionStorage.removeItem(DISPLAY_NAME_KEY);
 };
-
 export default api;

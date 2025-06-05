@@ -29,7 +29,7 @@ export const AuthProvider = ({ children }) => {
     useEffect(() => {
         setOnAuthError(() => {
             messageApi.error("Session expired. Please login again.");
-            setUser({ username: "", role: "" }); // reset auth state
+            setUser({ username: "", role: "", displayName: "" }); // reset auth state
             navigate("/login");
         });
     }, [navigate, messageApi]);
@@ -39,9 +39,9 @@ export const AuthProvider = ({ children }) => {
         try {
             const res = await api.post("/auth/login", { username, password });
             setAccessToken(res.data.accessToken);
-            rememberUser(res.data.username, res.data.role || "user", remember);
-            setUser({ username: res.data.username, role: res.data.role || "user" });
-            console.log(username)
+            rememberUser(res.data.username, res.data.role || "user", res.data.displayName, remember);
+            setUser({ username: res.data.username, role: res.data.role || "user", displayName: res.data.displayName });
+            console.log(user)
             return { success: true };
         } catch (err) {
             return { success: false, error: err.response?.data?.error || "Login failed" };
@@ -57,7 +57,7 @@ export const AuthProvider = ({ children }) => {
         } catch { }
         setAccessToken("");
         clearRememberedUser();
-        setUser({ username: "", role: "" });
+        setUser({ username: "", role: "", displayName: "" });
         setLoading(false);
     };
 
@@ -65,11 +65,11 @@ export const AuthProvider = ({ children }) => {
         setLoading(true);
         try {
             const res = await api.get("/auth/me");
-            setUser({ username: res.data.username, role: res.data.role });
+            setUser({ username: res.data.username, role: res.data.role, displayName: res.data.displayName });
             return true;
         } catch (e) {
             console.warn("checkAuth failed", e); // เพิ่ม debug
-            setUser({ username: "", role: "" });
+            setUser({ username: "", role: "", displayName: "" });
             return false;
         } finally {
             setLoading(false);

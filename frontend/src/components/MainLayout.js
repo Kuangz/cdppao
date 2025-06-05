@@ -1,6 +1,6 @@
 import React from "react";
 import { Layout, Menu, Button, Dropdown, Space } from "antd";
-import { DeleteOutlined, UserOutlined, LogoutOutlined } from "@ant-design/icons";
+import { DeleteOutlined, UserOutlined, LogoutOutlined, SettingOutlined } from "@ant-design/icons";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 const { Header, Content, Footer } = Layout;
@@ -24,6 +24,21 @@ const MainLayout = ({ children }) => {
 
     const userMenu = {
         items: [
+            {
+                key: "change-password",
+                icon: <SettingOutlined />,
+                label: <Link to="/change-password">เปลี่ยนรหัสผ่าน</Link>
+            },
+            {
+                key: "user-management",
+                icon: <UserOutlined />,
+                label: <Link to="/user-management">จัดการผู้ใช้</Link>,
+                hidden: user?.role !== "admin"
+            },
+            {
+                type: "divider"
+            },
+
             {
                 key: "logout",
                 icon: <LogoutOutlined />,
@@ -62,7 +77,7 @@ const MainLayout = ({ children }) => {
                             style={{ marginLeft: 16, fontWeight: "bold" }}
                         >
                             <Space>
-                                {user.username}
+                                {user.displayName || user.username}
                             </Space>
                         </Button>
                     </Dropdown>

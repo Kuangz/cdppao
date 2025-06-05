@@ -79,7 +79,7 @@ exports.listPoints = async (req, res) => {
         const skip = (_page - 1) * _pageSize;
 
         const [items, total] = await Promise.all([
-            GarbageBinPoint.find(filter)
+            GarbageBinPoint.find(filter).populate('history.userId', 'username displayName')
                 .sort({ createdAt: -1 })
                 .skip(skip)
                 .limit(_pageSize),
@@ -100,7 +100,7 @@ exports.listPoints = async (req, res) => {
 // -- GET One Point
 exports.getPoint = async (req, res) => {
     try {
-        const point = await GarbageBinPoint.findById(req.params.id);
+        const point = await GarbageBinPoint.findById(req.params.id).populate('history.userId', 'username displayName');
         if (!point) return res.status(404).json({ error: "Not found" });
         res.json(point);
     } catch (err) {
@@ -113,6 +113,8 @@ exports.createPoint = async (req, res) => {
     try {
         const { locationName, description, lat, lng, serial, size, note } = req.body;
         const images = req.files ? req.files.map(f => '/uploads/garbage_bins/' + f.filename) : [];
+        const userId = req.user && req.user.id ? req.user.id : null;
+
         const currentBin = {
             serial,
             size: Number(size),
@@ -124,7 +126,8 @@ exports.createPoint = async (req, res) => {
             bin: currentBin,
             action: "installed",
             changeDate: new Date(),
-            note: note || "ติดตั้งใหม่"
+            note: note || "ติดตั้งใหม่",
+            userId
         }];
 
         const point = await GarbageBinPoint.create({
@@ -197,7 +200,8 @@ exports.deletePoint = async (req, res) => {
             bin: point.currentBin,
             action: "deleted",
             changeDate: new Date(),
-            note: "ลบจุดติดตั้ง"
+            note: "ลบจุดติดตั้ง",
+            userId
         });
 
         // 2) เปลี่ยน status bin เป็น deleted
@@ -222,6 +226,7 @@ exports.deletePoint = async (req, res) => {
 exports.changeBinStatus = async (req, res) => {
     try {
         const { action, status, serial, size, note } = req.body;
+        const userId = req.user && req.user.id ? req.user.id : null;
         const images = req.files ? req.files.map(f => '/uploads/garbage_bins/' + f.filename) : [];
         // action = "broken", "lost", "replaced", "installed", "removed"
         // status = "broken", "lost", "replaced", "active", "removed"
@@ -242,7 +247,8 @@ exports.changeBinStatus = async (req, res) => {
                 bin: newBin,
                 action: "replaced",
                 changeDate: new Date(),
-                note: note || "เปลี่ยนถังใหม่"
+                note: note || "เปลี่ยนถังใหม่",
+                userId
             });
         }
         else if (action === "removed") {
@@ -251,7 +257,8 @@ exports.changeBinStatus = async (req, res) => {
                 bin: { ...point.currentBin.toObject() }, // สำเนา bin ล่าสุด
                 action,
                 changeDate: new Date(),
-                note: note || "นำถังขยะออก"
+                note: note || "นำถังขยะออก",
+                userId
             });
             point.currentBin = null
         }
@@ -265,7 +272,8 @@ exports.changeBinStatus = async (req, res) => {
                 bin: { ...point.currentBin.toObject() }, // สำเนา bin ล่าสุด
                 action,
                 changeDate: new Date(),
-                note: note || ""
+                note: note || "",
+                userId
             });
         }
         await point.save();

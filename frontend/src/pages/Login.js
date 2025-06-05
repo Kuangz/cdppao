@@ -26,7 +26,7 @@ const Login = () => {
 
     return (
         <div style={{ maxWidth: 400, margin: "auto", marginTop: 60 }}>
-            <Title level={2}>Login</Title>
+            <Title level={2}>เข้าใช้งานระบบ</Title>
             <Form
                 name="login_form"
                 initialValues={{ remember: true }}
@@ -35,28 +35,28 @@ const Login = () => {
             >
                 <Form.Item
                     name="username"
-                    rules={[{ required: true, message: "Please input your Username!" }]}
+                    rules={[{ required: true, message: "โปรดกรอกชื่อผู้ใช้งาน" }]}
                 >
-                    <Input prefix={<UserOutlined />} placeholder="Username" autoFocus />
+                    <Input prefix={<UserOutlined />} placeholder="ชื่อผู้ใชเงาน" autoFocus />
                 </Form.Item>
                 <Form.Item
                     name="password"
-                    rules={[{ required: true, message: "Please input your Password!" }]}
+                    rules={[{ required: true, message: "โปรดกรอกรหัสผ่าน" }]}
                 >
-                    <Input.Password prefix={<LockOutlined />} placeholder="Password" />
+                    <Input.Password prefix={<LockOutlined />} placeholder="รหัสผ่าน" />
                 </Form.Item>
                 <Form.Item name="remember" valuePropName="checked">
-                    <Checkbox>Remember me</Checkbox>
+                    <Checkbox>จดจำการเข้าสู่ระบบ</Checkbox>
                 </Form.Item>
                 <Form.Item>
                     <Button type="primary" htmlType="submit" block loading={loading}>
-                        Log in
+                        เข้าสู่ระบบ
                     </Button>
                 </Form.Item>
             </Form>
-            <Button type="link" block onClick={() => navigate("/register")}>
+            {/* <Button type="link" block onClick={() => navigate("/register")}>
                 Register
-            </Button>
+            </Button> */}
         </div>
     );
 };

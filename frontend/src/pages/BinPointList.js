@@ -1,11 +1,10 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Table, Button, Modal, Typography, Card, Space, Input } from "antd";
+import { Table, Button, Modal, Typography, Card, Space, Input, Grid } from "antd";
 import { ExclamationCircleOutlined } from "@ant-design/icons";
 import { useMessageApi } from "../contexts/MessageContext";
 import { useAuth } from "../contexts/AuthContext";
 import StatusBadge from "../components/StatusBadge";
-
 import { BIN_STATUS_MAP } from "../utils/statusUtil";
 
 import {
@@ -15,6 +14,7 @@ import {
 import BinPointDetail from "./BinPointDetail";
 import { formatDateTime } from "../utils/formatDate";
 const { Title } = Typography;
+const { useBreakpoint } = Grid;
 const STATUS_FILTER_COL_INDEX = 3; // หรือ index ตรงกับ columns ที่ใส่ filters
 const BinPointList = () => {
     const [points, setPoints] = useState([]);
@@ -29,6 +29,8 @@ const BinPointList = () => {
     const [deleteId, setDeleteId] = useState(null);
     const navigate = useNavigate();
     const { user } = useAuth();
+
+    const screens = useBreakpoint();
 
     const FILTERABLE_STATUSES = ["active", "lost", "broken", "removed"];
     const statusOptionsAll = FILTERABLE_STATUSES.map(key => ({
@@ -83,7 +85,7 @@ const BinPointList = () => {
 
     const columns = [
         { title: "ชื่อจุดติดตั้ง", dataIndex: "locationName" },
-        {
+        screens.md && {
             title: "พิกัด",
             render: (r) => (
                 <span>
@@ -107,7 +109,7 @@ const BinPointList = () => {
                     ? <StatusBadge status={r.currentBin?.status} />
                     : "-",
         },
-        {
+        screens.md && {
             title: "วันที่เพิ่ม",
             render: (r) =>
                 r.currentBin
@@ -130,7 +132,7 @@ const BinPointList = () => {
                 </Space>
             ),
         },
-    ];
+    ].filter(Boolean);
 
     return (
         <Card style={{ margin: "auto", marginTop: 8 }}>
@@ -160,6 +162,7 @@ const BinPointList = () => {
                 )}
                 dataSource={points}
                 rowKey="_id"
+                scroll={{ x: 800 }}
                 loading={loading}
                 pagination={{
                     current: pagination.current,
@@ -179,7 +182,7 @@ const BinPointList = () => {
                         statusValues || ""
                     );
                 }}
-                style={{ marginTop: 24 }}
+                style={{ marginTop: 6 }}
             />
             {/* Modal สำหรับดูรายละเอียด */}
             <Modal

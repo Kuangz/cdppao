@@ -10,6 +10,7 @@ const BinSchema = new mongoose.Schema({
     },
     imageUrls: [{ type: String }],
     installedAt: { type: Date, default: Date.now },   // วันที่ติดตั้ง/เปลี่ยนถัง
+
 }, { _id: false });
 
 const BinChangeHistorySchema = new mongoose.Schema({
@@ -28,7 +29,8 @@ const BinChangeHistorySchema = new mongoose.Schema({
         required: true
     },
     changeDate: { type: Date, default: Date.now },
-    note: { type: String }
+    note: { type: String },
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" } // <<<<--- เพิ่มตรงนี้
 }, { _id: false });
 
 const GarbageBinPointSchema = new mongoose.Schema({
