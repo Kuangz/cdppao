@@ -6,6 +6,7 @@ import { useMessageApi } from "../contexts/MessageContext";
 import LocationPicker from "../components/LocationPicker";
 import { useNavigate } from "react-router-dom";
 import imageCompression from "browser-image-compression";
+import useCurrentLocation from "../hooks/useCurrentLocation";
 
 const DEFAULT_POSITION = { lat: 7.8804, lng: 98.3923 };
 const MAX_IMAGE_COUNT = 5;
@@ -19,6 +20,8 @@ export default function BinPointForm({ point = null, onSuccess = () => { } }) {
     const navigate = useNavigate();
     const messageApi = useMessageApi();
     const [fileList, setFileList] = useState([]);
+
+    const { location: contextLocation } = useCurrentLocation();
 
     const [location, setLocation] = useState(undefined);
 
@@ -44,9 +47,13 @@ export default function BinPointForm({ point = null, onSuccess = () => { } }) {
         } else {
             form.resetFields();
             setFileList([]);
-            setLocation(undefined);
+            if (contextLocation && typeof contextLocation.lat === "number" && typeof contextLocation.lng === "number") {
+                setLocation(contextLocation);
+            } else {
+                setLocation(DEFAULT_POSITION);
+            }
         }
-    }, [point, form]);
+    }, [point, form, contextLocation]);
 
     const handleFinish = async (values) => {
         try {
@@ -62,10 +69,16 @@ export default function BinPointForm({ point = null, onSuccess = () => { } }) {
                 .filter(f => !f.originFileObj && f.url)
                 .map(f => stripHost(f.url));
 
-            const safeLocation =
-                location && typeof location.lat === "number" && typeof location.lng === "number"
-                    ? location
-                    : DEFAULT_POSITION;
+            let safeLocation = location;
+
+            if (!safeLocation || typeof safeLocation.lat !== "number" || typeof safeLocation.lng !== "number") {
+                safeLocation = contextLocation;
+            }
+
+            if (!safeLocation || typeof safeLocation.lat !== "number" || typeof safeLocation.lng !== "number") {
+                messageApi.error("กรุณาเลือกตำแหน่งบนแผนที่");
+                return;
+            }
 
             const payload = {
                 locationName: values.locationName,
@@ -110,8 +123,18 @@ export default function BinPointForm({ point = null, onSuccess = () => { } }) {
                     <Input placeholder="ชื่อจุดติดตั้ง" size="large" />
                 </Form.Item>
 
-                <Form.Item label="ตำแหน่ง (เลือกบนแผนที่)">
+                <Form.Item
+                    label="ตำแหน่ง (เลือกบนแผนที่)"
+                    required
+                    validateStatus={!location ? "error" : undefined}
+                    help={!location ? "กรุณาเลือกตำแหน่งบนแผนที่" : undefined}
+                >
                     <LocationPicker value={location} onChange={setLocation} />
+                    {location &&
+                        <div style={{ textAlign: "center", margin: 8, fontSize: 16 }}>
+                            ละติจูด: <b>{location['lat'].toFixed(6)}</b> | ลองติจูด: <b>{location['lng'].toFixed(6)}</b>
+                        </div>
+                    }
                 </Form.Item>
 
                 <Divider />
@@ -122,6 +145,17 @@ export default function BinPointForm({ point = null, onSuccess = () => { } }) {
                         name="images"
                         valuePropName="fileList"
                         getValueFromEvent={() => fileList}
+                        rules={[
+                            {
+                                validator: (_, value) => {
+                                    // value อาจเป็น undefined ตอนยังไม่เลือก
+                                    if (!value || value.length === 0) {
+                                        return Promise.reject("กรุณาแนบรูปถังขยะอย่างน้อย 1 รูป");
+                                    }
+                                    return Promise.resolve();
+                                },
+                            },
+                        ]}
                     >
                         <Upload
                             listType="picture-card"

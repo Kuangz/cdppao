@@ -181,9 +181,9 @@ const LocationPicker = ({ value, onChange }) => {
                 </div>
             )}
 
-            <div style={{ textAlign: "center", margin: 8, fontSize: 16 }}>
+            {/* <div style={{ textAlign: "center", margin: 8, fontSize: 16 }}>
                 Lat: <b>{center[0].toFixed(6)}</b> | Lng: <b>{center[1].toFixed(6)}</b>
-            </div>
+            </div> */}
         </div>
     );
 };
