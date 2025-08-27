@@ -4,6 +4,8 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import AdminPanel from "./pages/AdminPanel";
+import LayerManagement from "./pages/LayerManagement";
+import GeoObjectCreatePage from "./pages/GeoObjectCreatePage";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AdminRoute from "./components/AdminRoute";
@@ -68,10 +70,28 @@ function App() {
         />
 
         <Route
+          path="/geodata/new"
+          element={
+            <ProtectedRoute>
+              <GeoObjectCreatePage />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
           path="/admin"
           element={
             <AdminRoute>
               <AdminPanel />
+            </AdminRoute>
+          }
+        />
+
+        <Route
+          path="/admin/layers"
+          element={
+            <AdminRoute>
+              <LayerManagement />
             </AdminRoute>
           }
         />

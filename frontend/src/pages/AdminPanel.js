@@ -1,40 +1,44 @@
 import React from "react";
-import { Typography, Table, Tag } from "antd";
+import { Typography, Card, List } from "antd";
+import { Link } from "react-router-dom";
+import { AppstoreAddOutlined, UserOutlined } from '@ant-design/icons';
 
 const { Title } = Typography;
 
-const usersMock = [
-    { key: 1, username: "admin", role: "admin" },
-    { key: 2, username: "user1", role: "user" },
-    { key: 3, username: "user2", role: "user" },
-];
-
-const columns = [
+const adminLinks = [
     {
-        title: "Username",
-        dataIndex: "username",
-        key: "username",
+        title: "Manage Layers",
+        description: "Define and manage data layers on the map.",
+        path: "/admin/layers",
+        icon: <AppstoreAddOutlined />
     },
     {
-        title: "Role",
-        dataIndex: "role",
-        key: "role",
-        render: (role) =>
-            role === "admin" ? <Tag color="red">Admin</Tag> : <Tag color="blue">User</Tag>,
-    },
+        title: "Manage Users",
+        description: "Register new users and manage existing ones.",
+        path: "/user-management",
+        icon: <UserOutlined />
+    }
 ];
 
 const AdminPanel = () => {
-    // ในโปรดักชัน fetch users จริงจาก backend ได้
     return (
-        <div style={{ maxWidth: 700, margin: "auto", marginTop: 60 }}>
+        <div style={{ maxWidth: 800, margin: "auto", padding: '24px' }}>
             <Title level={2}>Admin Panel</Title>
-            <Table
-                dataSource={usersMock}
-                columns={columns}
-                pagination={false}
-                style={{ marginTop: 32 }}
-            />
+            <Card>
+                <List
+                    itemLayout="horizontal"
+                    dataSource={adminLinks}
+                    renderItem={item => (
+                        <List.Item>
+                            <List.Item.Meta
+                                avatar={item.icon}
+                                title={<Link to={item.path}>{item.title}</Link>}
+                                description={item.description}
+                            />
+                        </List.Item>
+                    )}
+                />
+            </Card>
         </div>
     );
 };
