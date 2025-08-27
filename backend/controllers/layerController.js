@@ -1,4 +1,5 @@
 const Layer = require('../models/Layer');
+const mongoose = require('mongoose');
 
 // @desc    Create a new layer
 // @route   POST /api/layers
@@ -104,52 +105,41 @@ const importLayerFromKML = async (req, res) => {
         return res.status(400).json({ error: 'No KML file uploaded.' });
     }
 
-    const session = await mongoose.startSession();
-    session.startTransaction();
+    const useTransactions = process.env.DB_SUPPORTS_TRANSACTIONS === 'true';
+    const session = useTransactions ? await mongoose.startSession() : null;
+    if (session) session.startTransaction();
 
     try {
-        // Decode file buffer from TIS-620 to UTF-8
         const utf8String = iconv.decode(req.file.buffer, 'TIS-620');
-
-        // Parse KML string into a DOM structure
         const dom = new JSDOM(utf8String, { contentType: 'application/xml' });
-
-        // Convert KML DOM to GeoJSON
         const geoJson = kml(dom.window.document);
 
         if (!geoJson.features || geoJson.features.length === 0) {
             throw new Error('KML file does not contain any features.');
         }
 
-        // --- Create the Layer ---
-        // Derive layer name from KML folder name or file name
         const layerName = geoJson.name || req.file.originalname.replace(/\.kml$/i, '');
-
-        // Derive schema from the properties of the first feature
         const firstFeatureProps = geoJson.features[0].properties;
         const fields = Object.keys(firstFeatureProps).map(key => ({
-            name: key.toLowerCase().replace(/[^a-z0-9_]/gi, ''), // Sanitize name
-            label: key, // Original key as label
-            type: typeof firstFeatureProps[key] === 'number' ? 'Number' : 'String', // Simple type inference
+            name: key.toLowerCase().replace(/[^a-z0-9_]/gi, ''),
+            label: key,
+            type: typeof firstFeatureProps[key] === 'number' ? 'Number' : 'String',
             required: false
         }));
 
         const newLayer = new Layer({
             name: layerName,
-            geometryType: geoJson.features[0].geometry.type, // Assume all features have same type
+            geometryType: geoJson.features[0].geometry.type,
             fields: fields
         });
         const savedLayer = await newLayer.save({ session });
 
-
-        // --- Create GeoObjects for each feature ---
         const geoObjectPromises = geoJson.features.map(feature => {
             const sanitizedProperties = {};
             for (const key in feature.properties) {
                 const sanitizedKey = key.toLowerCase().replace(/[^a-z0-9_]/gi, '');
                 sanitizedProperties[sanitizedKey] = feature.properties[key];
             }
-
             const geoObject = new GeoObject({
                 layerId: savedLayer._id,
                 geometry: feature.geometry,
@@ -161,15 +151,15 @@ const importLayerFromKML = async (req, res) => {
 
         await Promise.all(geoObjectPromises);
 
-        await session.commitTransaction();
+        if (session) await session.commitTransaction();
         res.status(201).json({ message: `Successfully imported ${geoJson.features.length} objects into new layer '${layerName}'.` });
 
     } catch (error) {
-        await session.abortTransaction();
+        if (session) await session.abortTransaction();
         console.error("KML Import Error:", error);
         res.status(500).json({ error: error.message });
     } finally {
-        session.endSession();
+        if (session) session.endSession();
     }
 };
 
