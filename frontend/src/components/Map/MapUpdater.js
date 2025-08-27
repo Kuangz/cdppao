@@ -11,7 +11,7 @@ const MapUpdater = ({ center, zoom }) => {
             // Use flyTo for a smooth animation to the new center
             map.flyTo(latLng, zoom || map.getZoom(), {
                 animate: true,
-                duration: 1.5 // Animation duration in seconds
+                duration: 0.5 // Animation duration in seconds, reduced for responsiveness
             });
         }
     }, [center, zoom, map]);

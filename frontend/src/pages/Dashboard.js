@@ -3,10 +3,11 @@ import { Row, Col, Card, Spin, message, Button } from 'antd';
 import { MenuFoldOutlined, MenuUnfoldOutlined, PlusOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { getLayers } from '../api/layer';
-import { getGeoObjectsByLayer } from '../api/geoObject';
-import { Image } from 'antd';
+import { getGeoObjectsByLayer, createGeoObject, updateGeoObject } from '../api/geoObject';
+import { Image, Space } from 'antd';
 import DynamicMap from '../components/Map/DynamicMap';
 import LayerControl from '../components/LayerControl';
+import GeoObjectForm from '../components/GeoObjectForm';
 import useCurrentLocation from '../hooks/useCurrentLocation';
 import useResponsiveMapHeight from '../hooks/useResponsiveMapHeight';
 
@@ -19,6 +20,7 @@ const Dashboard = () => {
     const [loading, setLoading] = useState(true);
     const [selectedObject, setSelectedObject] = useState(null);
     const [isPanelVisible, setPanelVisible] = useState(true);
+    const [panelMode, setPanelMode] = useState('details'); // 'details', 'create', 'edit'
 
     const navigate = useNavigate();
     const { location } = useCurrentLocation(true);
@@ -60,8 +62,26 @@ const Dashboard = () => {
 
     const handleSelectObject = useCallback((object) => {
         setSelectedObject(object);
-        setPanelVisible(true); // Ensure panel is visible when an object is selected
+        setPanelMode('details'); // Switch to details view when a new object is selected
+        setPanelVisible(true);
     }, []);
+
+    const handleFormSubmit = async (formData) => {
+        try {
+            if (panelMode === 'create') {
+                await createGeoObject(formData);
+                message.success('Object created successfully!');
+            } else if (panelMode === 'edit' && selectedObject) {
+                await updateGeoObject(selectedObject._id, formData);
+                message.success('Object updated successfully!');
+            }
+            setPanelMode('details');
+            loadData(); // Reload all data to reflect changes
+        } catch (error) {
+            message.error('Failed to save object.');
+            console.error("Form submission error:", error);
+        }
+    };
 
     const handleVisibilityChange = (newVisibleIds) => {
         setVisibleLayerIds(newVisibleIds);
@@ -125,42 +145,60 @@ const Dashboard = () => {
             }}>
                 <Card title="Controls & Details" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
                     bodyStyle={{ flex: 1, overflowY: 'auto', padding: '16px' }}>
-                    <Button
-                        type="primary"
-                        icon={<PlusOutlined />}
-                        onClick={() => navigate('/geodata/new')}
-                        style={{ width: '100%', marginBottom: 16 }}
-                    >
-                        Add Data to Layer
-                    </Button>
-                    <LayerControl
-                        layers={layers}
-                        visibleLayerIds={visibleLayerIds}
-                        onVisibilityChange={handleVisibilityChange}
-                    />
-                    <div id="detail-section" style={{ marginTop: '16px' }}>
-                        <h4>Details</h4>
-                        <hr/>
-                        {selectedObject ? (
-                            <div>
-                                <h5>{selectedObject.properties.name || 'Selected Object'}</h5>
-                                {selectedObject.images && selectedObject.images.length > 0 && (
-                                    <Image.PreviewGroup>
-                                        <Space wrap>
-                                            {selectedObject.images.map((img, index) => (
-                                                <Image key={index} width={80} src={`${SERVER_URL}/${img}`} />
-                                            ))}
-                                        </Space>
-                                    </Image.PreviewGroup>
+
+                    {panelMode === 'details' && (
+                        <>
+                            <Button
+                                type="primary"
+                                icon={<PlusOutlined />}
+                                onClick={() => { setPanelMode('create'); setPanelVisible(true); }}
+                                style={{ width: '100%', marginBottom: 16 }}
+                            >
+                                Create New Data
+                            </Button>
+                            <LayerControl
+                                layers={layers}
+                                visibleLayerIds={visibleLayerIds}
+                                onVisibilityChange={handleVisibilityChange}
+                            />
+                            <div id="detail-section" style={{ marginTop: '16px' }}>
+                                <h4>Details</h4>
+                                <hr />
+                                {selectedObject ? (
+                                    <div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <h5 style={{ margin: 0 }}>{selectedObject.properties.name || 'Selected Object'}</h5>
+                                            <Button size="small" onClick={() => setPanelMode('edit')}>Edit</Button>
+                                        </div>
+                                        {selectedObject.images && selectedObject.images.length > 0 && (
+                                            <Image.PreviewGroup>
+                                                <Space wrap>
+                                                    {selectedObject.images.map((img, index) => (
+                                                        <Image key={index} width={80} src={`${SERVER_URL}/${img}`} />
+                                                    ))}
+                                                </Space>
+                                            </Image.PreviewGroup>
+                                        )}
+                                        <pre style={{ maxHeight: 300, overflow: 'auto', marginTop: 16, backgroundColor: '#fff', padding: '8px' }}>
+                                            {JSON.stringify(selectedObject.properties, null, 2)}
+                                        </pre>
+                                    </div>
+                                ) : (
+                                    <p>Click on an object on the map to see its details.</p>
                                 )}
-                                <pre style={{ maxHeight: 300, overflow: 'auto', marginTop: 16, backgroundColor: '#fff', padding: '8px' }}>
-                                    {JSON.stringify(selectedObject.properties, null, 2)}
-                                </pre>
                             </div>
-                        ) : (
-                            <p>Click on an object on the map to see its details.</p>
-                        )}
-                    </div>
+                        </>
+                    )}
+
+                    {(panelMode === 'create' || panelMode === 'edit') && (
+                        <GeoObjectForm
+                            key={selectedObject?._id || 'create'} // Re-mount form on new selection
+                            initialData={panelMode === 'edit' ? selectedObject : null}
+                            layers={layers}
+                            onSubmit={handleFormSubmit}
+                            onCancel={() => setPanelMode('details')}
+                        />
+                    )}
                 </Card>
             </div>
         </div>
