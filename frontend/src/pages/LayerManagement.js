@@ -1,13 +1,15 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Table, Button, Modal, Form, message, Popconfirm, Space } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
-import { getLayers, createLayer, updateLayer, deleteLayer } from '../api/layer';
+import { Table, Button, Modal, Form, message, Popconfirm, Space, Upload } from 'antd';
+import { PlusOutlined, EditOutlined, DeleteOutlined, UploadOutlined } from '@ant-design/icons';
+import { getLayers, createLayer, updateLayer, deleteLayer, importLayer } from '../api/layer';
 import LayerForm from '../components/LayerForm';
 
 const LayerManagement = () => {
     const [layers, setLayers] = useState([]);
     const [loading, setLoading] = useState(false);
     const [isModalVisible, setIsModalVisible] = useState(false);
+    const [isImportModalVisible, setIsImportModalVisible] = useState(false);
+    const [fileList, setFileList] = useState([]);
     const [editingLayer, setEditingLayer] = useState(null);
     const [form] = Form.useForm();
 
@@ -71,6 +73,50 @@ const LayerManagement = () => {
         }
     };
 
+    const showImportModal = () => {
+        setIsImportModalVisible(true);
+    };
+
+    const handleImportCancel = () => {
+        setIsImportModalVisible(false);
+        setFileList([]);
+    };
+
+    const handleImport = async () => {
+        if (fileList.length === 0) {
+            message.error("Please select a KML file to import.");
+            return;
+        }
+        const formData = new FormData();
+        formData.append('file', fileList[0]);
+
+        setLoading(true);
+        try {
+            const res = await importLayer(formData);
+            message.success(res.data.message || "Layer imported successfully!");
+            handleImportCancel();
+            fetchLayers();
+        } catch (error) {
+            const errorMessage = error.response?.data?.error || 'Failed to import layer.';
+            message.error(errorMessage);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const uploadProps = {
+        onRemove: file => {
+            setFileList([]);
+        },
+        beforeUpload: file => {
+            setFileList([file]);
+            return false; // Prevent auto-upload
+        },
+        fileList,
+        accept: ".kml",
+        maxCount: 1,
+    };
+
     const columns = [
         {
             title: 'Layer Name',
@@ -113,14 +159,21 @@ const LayerManagement = () => {
 
     return (
         <div style={{ padding: '24px' }}>
-            <Button
-                type="primary"
-                icon={<PlusOutlined />}
-                onClick={() => showModal()}
-                style={{ marginBottom: 16 }}
-            >
-                Create Layer
-            </Button>
+            <Space style={{ marginBottom: 16 }}>
+                <Button
+                    type="primary"
+                    icon={<PlusOutlined />}
+                    onClick={() => showModal()}
+                >
+                    Create Layer
+                </Button>
+                <Button
+                    icon={<UploadOutlined />}
+                    onClick={showImportModal}
+                >
+                    Import from KML
+                </Button>
+            </Space>
             <Table
                 columns={columns}
                 dataSource={layers}
@@ -143,6 +196,18 @@ const LayerManagement = () => {
                 ]}
             >
                 <LayerForm form={form} onFinish={handleFinish} initialValues={editingLayer} />
+            </Modal>
+            <Modal
+                title="Import Layer from KML"
+                visible={isImportModalVisible}
+                onOk={handleImport}
+                onCancel={handleImportCancel}
+                confirmLoading={loading}
+                okText="Import"
+            >
+                <Upload {...uploadProps}>
+                    <Button icon={<UploadOutlined />}>Click to select a .kml file</Button>
+                </Upload>
             </Modal>
         </div>
     );

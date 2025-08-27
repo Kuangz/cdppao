@@ -40,7 +40,11 @@ const validateProperties = (properties, fields) => {
 // @route   POST /api/geoobjects
 // @access  Authenticated Users
 const createGeoObject = async (req, res) => {
-    const { layerId, geometry, properties } = req.body;
+    // With multer, text fields are in req.body, files are in req.files
+    const { layerId } = req.body;
+    const geometry = JSON.parse(req.body.geometry);
+    const properties = JSON.parse(req.body.properties);
+
     try {
         const layer = await Layer.findById(layerId);
         if (!layer) {
@@ -55,10 +59,13 @@ const createGeoObject = async (req, res) => {
         // Validate properties against the layer's schema
         validateProperties(properties, layer.fields);
 
+        const imageUrls = req.files ? req.files.map(file => file.path) : [];
+
         const geoObject = new GeoObject({
             layerId,
             geometry,
             properties,
+            images: imageUrls,
             history: [{ action: 'created', userId: req.user.id }]
         });
 
@@ -103,11 +110,12 @@ const getGeoObjectById = async (req, res) => {
     }
 };
 
+const fs = require('fs');
+
 // @desc    Update a geo-object
 // @route   PUT /api/geoobjects/:id
 // @access  Authenticated Users
 const updateGeoObject = async (req, res) => {
-    const { properties, geometry } = req.body;
     try {
         const geoObject = await GeoObject.findById(req.params.id);
         if (!geoObject) {
@@ -122,17 +130,33 @@ const updateGeoObject = async (req, res) => {
         // Keep track of old properties for history diff
         const oldProperties = JSON.parse(JSON.stringify(geoObject.properties));
 
-        if (properties) {
+        if (req.body.properties) {
+            const properties = JSON.parse(req.body.properties);
             validateProperties(properties, layer.fields);
             geoObject.properties = properties;
         }
 
-        if (geometry) {
+        if (req.body.geometry) {
+            const geometry = JSON.parse(req.body.geometry);
              if (layer.geometryType !== geometry.type) {
                 throw new Error(`Invalid geometry type. Expected '${layer.geometryType}', but got '${geometry.type}'.`);
             }
             geoObject.geometry = geometry;
         }
+
+        // Handle image updates
+        const newImageUrls = req.files ? req.files.map(file => file.path) : [];
+        let existingImages = req.body.existingImages ? (Array.isArray(req.body.existingImages) ? req.body.existingImages : [req.body.existingImages]) : [];
+
+        // Find images to delete
+        const imagesToDelete = geoObject.images.filter(img => !existingImages.includes(img));
+        imagesToDelete.forEach(filePath => {
+            fs.unlink(filePath, (err) => {
+                if (err) console.error(`Failed to delete image: ${filePath}`, err);
+            });
+        });
+
+        geoObject.images = [...existingImages, ...newImageUrls];
 
         geoObject.history.push({
             action: 'updated',

@@ -48,50 +48,58 @@ describe('GeoObject API Endpoints', () => {
 
     describe('POST /api/geoobjects', () => {
         it('should create a new geo-object with valid properties', async () => {
+            const geometry = { type: 'Point', coordinates: [100, 10] };
+            const properties = { name: 'Valid Point', rating: 5 };
+
             const res = await request(app)
                 .post('/api/geoobjects')
-                .send({
-                    layerId: testLayer._id,
-                    geometry: { type: 'Point', coordinates: [100, 10] },
-                    properties: { name: 'Valid Point', rating: 5 }
-                });
+                .field('layerId', testLayer._id.toString())
+                .field('geometry', JSON.stringify(geometry))
+                .field('properties', JSON.stringify(properties));
+
             expect(res.statusCode).toEqual(201);
             expect(res.body).toHaveProperty('layerId', testLayer._id.toString());
-            expect(res.body.properties).toEqual({ name: 'Valid Point', rating: 5 });
+            expect(res.body.properties).toEqual(properties);
         });
 
         it('should fail if a required property is missing', async () => {
+            const geometry = { type: 'Point', coordinates: [100, 10] };
+            const properties = { rating: 3 }; // Missing 'name'
+
             const res = await request(app)
                 .post('/api/geoobjects')
-                .send({
-                    layerId: testLayer._id,
-                    geometry: { type: 'Point', coordinates: [100, 10] },
-                    properties: { rating: 3 } // Missing 'name'
-                });
+                .field('layerId', testLayer._id.toString())
+                .field('geometry', JSON.stringify(geometry))
+                .field('properties', JSON.stringify(properties));
+
             expect(res.statusCode).toEqual(400);
             expect(res.body.error).toContain("Property 'Name' is required.");
         });
 
         it('should fail if a property has the wrong data type', async () => {
+            const geometry = { type: 'Point', coordinates: [100, 10] };
+            const properties = { name: 'Good Point', rating: 'five' }; // 'rating' should be a number
+
             const res = await request(app)
                 .post('/api/geoobjects')
-                .send({
-                    layerId: testLayer._id,
-                    geometry: { type: 'Point', coordinates: [100, 10] },
-                    properties: { name: 'Good Point', rating: 'five' } // 'rating' should be a number
-                });
+                .field('layerId', testLayer._id.toString())
+                .field('geometry', JSON.stringify(geometry))
+                .field('properties', JSON.stringify(properties));
+
             expect(res.statusCode).toEqual(400);
             expect(res.body.error).toContain("Property 'Rating' must be a number.");
         });
 
         it('should fail if geometry type does not match the layer', async () => {
+            const geometry = { type: 'Polygon', coordinates: [[[0,0], [1,1], [0,1], [0,0]]] };
+            const properties = { name: 'Wrong Geometry' };
+
             const res = await request(app)
                 .post('/api/geoobjects')
-                .send({
-                    layerId: testLayer._id,
-                    geometry: { type: 'Polygon', coordinates: [[[0,0], [1,1], [0,1], [0,0]]] },
-                    properties: { name: 'Wrong Geometry' }
-                });
+                .field('layerId', testLayer._id.toString())
+                .field('geometry', JSON.stringify(geometry))
+                .field('properties', JSON.stringify(properties));
+
             expect(res.statusCode).toEqual(400);
             expect(res.body.error).toContain("Invalid geometry type. Expected 'Point', but got 'Polygon'.");
         });

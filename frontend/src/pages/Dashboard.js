@@ -4,10 +4,13 @@ import { PlusOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { getLayers } from '../api/layer';
 import { getGeoObjectsByLayer } from '../api/geoObject';
+import { Image } from 'antd';
 import DynamicMap from '../components/Map/DynamicMap';
 import LayerControl from '../components/LayerControl';
 import useCurrentLocation from '../hooks/useCurrentLocation';
 import useResponsiveMapHeight from '../hooks/useResponsiveMapHeight';
+
+const SERVER_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
 const Dashboard = () => {
     const [layers, setLayers] = useState([]);
@@ -124,7 +127,16 @@ const Dashboard = () => {
                                 {selectedObject ? (
                                     <div>
                                         <h4>{selectedObject.properties.name || 'Selected Object'}</h4>
-                                        <pre style={{ maxHeight: 300, overflow: 'auto' }}>
+                                        {selectedObject.images && selectedObject.images.length > 0 && (
+                                            <Image.PreviewGroup>
+                                                <Space wrap>
+                                                    {selectedObject.images.map((img, index) => (
+                                                        <Image key={index} width={80} src={`${SERVER_URL}/${img}`} />
+                                                    ))}
+                                                </Space>
+                                            </Image.PreviewGroup>
+                                        )}
+                                        <pre style={{ maxHeight: 300, overflow: 'auto', marginTop: 16 }}>
                                             {JSON.stringify(selectedObject.properties, null, 2)}
                                         </pre>
                                     </div>

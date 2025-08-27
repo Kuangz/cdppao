@@ -16,18 +16,22 @@ export const getGeoObjectById = (id) => api.get(`/geoobjects/${id}`);
 
 /**
  * Creates a new geo-object.
- * @param {object} geoObjectData The data for the new object.
+ * @param {FormData} formData The form data for the new object.
  * @returns {Promise<AxiosResponse<any>>}
  */
-export const createGeoObject = (geoObjectData) => api.post("/geoobjects", geoObjectData);
+export const createGeoObject = (formData) => api.post("/geoobjects", formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+});
 
 /**
  * Updates an existing geo-object.
  * @param {string} id The ID of the object to update.
- * @param {object} geoObjectData The updated data.
+ * @param {FormData} formData The updated form data.
  * @returns {Promise<AxiosResponse<any>>}
  */
-export const updateGeoObject = (id, geoObjectData) => api.put(`/geoobjects/${id}`, geoObjectData);
+export const updateGeoObject = (id, formData) => api.put(`/geoobjects/${id}`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+});
 
 /**
  * Deletes a geo-object.

@@ -40,11 +40,18 @@ const GeoObjectCreatePage = () => {
         }
         setLoading(true);
         try {
-            const payload = {
-                ...values,
-                layerId: selectedLayer._id,
-            };
-            await createGeoObject(payload);
+            const formData = new FormData();
+            formData.append('layerId', selectedLayer._id);
+            formData.append('geometry', JSON.stringify(values.geometry));
+            formData.append('properties', JSON.stringify(values.properties || {}));
+
+            if (values.images && values.images.length > 0) {
+                values.images.forEach(file => {
+                    formData.append('images', file.originFileObj);
+                });
+            }
+
+            await createGeoObject(formData);
             message.success(`New object created in layer "${selectedLayer.name}" successfully!`);
             navigate('/dashboard');
         } catch (error) {

@@ -34,3 +34,12 @@ export const updateLayer = (id, layerData) => api.put(`/layers/${id}`, layerData
  * @returns {Promise<AxiosResponse<any>>}
  */
 export const deleteLayer = (id) => api.delete(`/layers/${id}`);
+
+/**
+ * Imports a new layer from a KML file.
+ * @param {FormData} formData The form data containing the KML file.
+ * @returns {Promise<AxiosResponse<any>>}
+ */
+export const importLayer = (formData) => api.post("/layers/import", formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+});

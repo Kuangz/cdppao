@@ -1,5 +1,6 @@
 import React from 'react';
-import { Form, Input, InputNumber, Switch, DatePicker, Button } from 'antd';
+import { Form, Input, InputNumber, Switch, DatePicker, Button, Upload } from 'antd';
+import { UploadOutlined } from '@ant-design/icons';
 import LocationPicker from './LocationPicker';
 
 // A wrapper to adapt the LocationPicker's {lat, lng} format to the form's GeoJSON format.
@@ -86,6 +87,26 @@ const GeoObjectForm = ({ form, layer, onFinish, initialValues }) => {
                 rules={[{ required: true, message: 'Please select a location on the map.' }]}
             >
                 <GeoJSONLocationPicker geometryType={layer.geometryType} />
+            </Form.Item>
+
+            <Form.Item
+                name="images"
+                label="Images"
+                valuePropName="fileList"
+                getValueFromEvent={(e) => {
+                    if (Array.isArray(e)) {
+                        return e;
+                    }
+                    return e && e.fileList;
+                }}
+            >
+                <Upload
+                    listType="picture"
+                    beforeUpload={() => false} // Prevent automatic upload
+                    multiple
+                >
+                    <Button icon={<UploadOutlined />}>Select Images</Button>
+                </Upload>
             </Form.Item>
 
             {layer.fields.map(field => renderField(field))}

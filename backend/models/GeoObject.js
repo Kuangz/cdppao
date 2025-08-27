@@ -44,6 +44,7 @@ const GeoObjectSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.Mixed, // For storing flexible, user-defined data
         default: {}
     },
+    images: [{ type: String }], // To store URLs or paths of uploaded images
     history: [ChangeHistorySchema]
 }, {
     timestamps: true
