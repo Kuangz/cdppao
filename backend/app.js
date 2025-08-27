@@ -53,8 +53,14 @@ app.get('/api/protected', auth, (req, res) => {
     res.json({ message: 'This is a protected route', userId: req.userId });
 });
 
+const layerRoutes = require('./routes/layers.js');
+
 app.use('/api/garbage-bins', garbageBinRoutes);
+const geoObjectRoutes = require('./routes/geoobjects.js');
+
 app.use('/api/users', userRoutes);
+app.use('/api/layers', layerRoutes);
+app.use('/api/geoobjects', geoObjectRoutes);
 
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 

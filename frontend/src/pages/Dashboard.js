@@ -1,225 +1,153 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { Row, Col, Card, Statistic, Button, Spin } from "antd";
-import {
-    EnvironmentOutlined,
-    DeleteOutlined,
-    AimOutlined,
-} from "@ant-design/icons";
-import { fetchBinPointsForMap, fetchBinPointNearBy } from "../api/garbageBin";
-import useCurrentLocation from "../hooks/useCurrentLocation";
-import NearbyBinTable from "../components/NearbyBinTable";
-import BinDetailCard from "../components/BinDetailCard";
-import { MapWithBinsAndShape } from "../components/Map";
-import useResponsiveMapHeight from "../hooks/useResponsiveMapHeight";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useEffect, useCallback } from 'react';
+import { Row, Col, Card, Spin, message, Button } from 'antd';
+import { PlusOutlined } from '@ant-design/icons';
+import { useNavigate } from 'react-router-dom';
+import { getLayers } from '../api/layer';
+import { getGeoObjectsByLayer } from '../api/geoObject';
+import { Image } from 'antd';
+import DynamicMap from '../components/Map/DynamicMap';
+import LayerControl from '../components/LayerControl';
+import useCurrentLocation from '../hooks/useCurrentLocation';
+import useResponsiveMapHeight from '../hooks/useResponsiveMapHeight';
+
+const SERVER_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
 const Dashboard = () => {
-    const [points, setPoints] = useState([]);
-    const [nearbyPoints, setNearbyPoints] = useState([]);
-    const [selectedPointId, setSelectedPointId] = useState(null); // use id
-    const [loadingPoints, setLoadingPoints] = useState(false);
-    const [loadingNearby, setLoadingNearby] = useState(false);
+    const [layers, setLayers] = useState([]);
+    const [geoObjects, setGeoObjects] = useState({}); // { layerId: [objects] }
+    const [visibleLayerIds, setVisibleLayerIds] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [selectedObject, setSelectedObject] = useState(null);
 
-    const {
-        location,
-        locating,
-        error: locationError,
-        getCurrentLocation,
-    } = useCurrentLocation(true);
-
-    const mapHeight = useResponsiveMapHeight(600, 320);
     const navigate = useNavigate();
+    const { location } = useCurrentLocation(true);
+    const mapHeight = useResponsiveMapHeight(600, 400);
 
-    // โหลดจุดทั้งหมด
-    const loadPoints = useCallback(async () => {
-        setLoadingPoints(true);
+    const loadData = useCallback(async () => {
+        setLoading(true);
         try {
-            const { data } = await fetchBinPointsForMap();
-            setPoints(data || []);
+            // 1. Fetch all layer definitions
+            const layerRes = await getLayers();
+            const fetchedLayers = layerRes.data || [];
+            setLayers(fetchedLayers);
+
+            // 2. Set all layers to be visible by default
+            setVisibleLayerIds(fetchedLayers.map(l => l._id));
+
+            // 3. Fetch geo-objects for each layer concurrently
+            const objectPromises = fetchedLayers.map(layer => getGeoObjectsByLayer(layer._id));
+            const objectResults = await Promise.all(objectPromises);
+
+            // 4. Populate the geoObjects state
+            const newGeoObjects = {};
+            fetchedLayers.forEach((layer, index) => {
+                newGeoObjects[layer._id] = objectResults[index].data || [];
+            });
+            setGeoObjects(newGeoObjects);
+
         } catch (err) {
-            console.error("Failed to fetch bin points:", err);
+            message.error("Failed to load map data.");
+            console.error("Failed to fetch data:", err);
         } finally {
-            setLoadingPoints(false);
+            setLoading(false);
         }
     }, []);
 
     useEffect(() => {
-        loadPoints();
-    }, [loadPoints]);
+        loadData();
+    }, [loadData]);
 
-    // โหลดจุดใกล้เคียง
-    const loadNearby = useCallback(async () => {
-        if (!location?.lat || !location?.lng) return;
-        setLoadingNearby(true);
-        try {
-            const { data } = await fetchBinPointNearBy(location.lat, location.lng, 300);
-            setNearbyPoints(data || []);
-        } catch (err) {
-            console.error("Failed to fetch nearby bin points:", err);
-        } finally {
-            setLoadingNearby(false);
-        }
-    }, [location]);
-
-    useEffect(() => {
-        if (location) loadNearby();
-    }, [location, loadNearby]);
-
-    const totalBins = points.filter(p => p.currentBin !== undefined).length;;
-    const brokenBins = points.reduce(
-        (count, pt) =>
-            pt.currentBin?.status?.toLowerCase() === "broken" ? count + 1 : count,
-        0
-    );
-    const lostBins = points.reduce(
-        (count, pt) =>
-            pt.currentBin?.status?.toLowerCase() === "lost" ? count + 1 : count,
-        0
-    );
-
-    const handleSelectPoint = useCallback((pt) => {
-        setSelectedPointId(pt._id); // ใช้ id
-        setTimeout(() => {
-            document.getElementById("manage-section")?.scrollIntoView({ behavior: "smooth" });
+    const handleSelectObject = useCallback((object) => {
+        setSelectedObject(object);
+         setTimeout(() => {
+            document.getElementById("detail-section")?.scrollIntoView({ behavior: "smooth" });
         }, 200);
     }, []);
 
-    const handleClearSelection = useCallback(() => setSelectedPointId(null), []);
-    const handleAddPoint = useCallback(() => navigate("/garbage-bins/new"), [navigate]);
+    const handleVisibilityChange = (newVisibleIds) => {
+        setVisibleLayerIds(newVisibleIds);
+    };
 
-    const centerStyle = { textAlign: "center", padding: 64 };
+    const centerStyle = { textAlign: "center", padding: 64, height: mapHeight, display: 'flex', justifyContent: 'center', alignItems: 'center' };
 
-    const handleStatusChanged = useCallback(() => {
-        loadPoints();
-        loadNearby();
-    }, [loadPoints, loadNearby]);
+    if (loading) {
+        return (
+            <div style={centerStyle}>
+                <Spin size="large" tip="Loading map data..." />
+            </div>
+        );
+    }
 
     return (
-        <div style={{ maxWidth: 1200, margin: "auto", padding: "16px 4px" }}>
-            {locating || loadingPoints ? (
-                <div style={centerStyle}>
-                    <Spin style={{ width: "100%", marginTop: 64 }}>
-                        {locating
-                            ? "กำลังค้นหาตำแหน่ง..."
-                            : "กำลังโหลดจุดถังขยะทั้งหมด..."}
-                    </Spin>
-                </div>
-            ) : (
-                <>
-                    {locationError && (
-                        <div style={{ color: "red", marginBottom: 12 }}>
-                            ไม่สามารถดึงตำแหน่ง: {locationError}
-                        </div>
-                    )}
+        <div style={{ maxWidth: 1400, margin: 'auto', padding: '16px 4px' }}>
+            <Row gutter={[16, 16]}>
+                {/* Map Section */}
+                <Col xs={24} md={18}>
+                    <Card
+                        styles={{
+                            body: {
+                                padding: 0,
+                                position: "relative",
+                                height: mapHeight,
+                            },
+                        }}
+                    >
+                        <DynamicMap
+                            center={location ? [location.lat, location.lng] : undefined}
+                            zoom={location ? 13 : 6}
+                            layers={layers}
+                            geoObjects={geoObjects}
+                            visibleLayerIds={visibleLayerIds}
+                            onSelectObject={handleSelectObject}
+                        />
+                    </Card>
+                </Col>
 
+                {/* Controls & Details Section */}
+                <Col xs={24} md={6}>
                     <Row gutter={[16, 16]}>
-                        {/* Map Section */}
-                        <Col xs={24} md={14}>
-                            <Card
-                                hoverable
-                                styles={{
-                                    body: {
-                                        padding: 0,
-                                        background: "#f7fafc",
-                                        position: "relative",
-                                        height: mapHeight,
-                                    },
-                                }}
+                        <Col span={24}>
+                            <Button
+                                type="primary"
+                                icon={<PlusOutlined />}
+                                onClick={() => navigate('/geodata/new')}
+                                style={{ width: '100%', marginBottom: 16 }}
                             >
-                                <Button
-                                    type="primary"
-                                    icon={<AimOutlined />}
-                                    onClick={
-                                        () => {
-                                            getCurrentLocation()
-                                            handleClearSelection()
-                                        }
-                                    }
-                                    loading={locating}
-                                    style={{
-                                        position: "absolute",
-                                        top: 14,
-                                        right: 18,
-                                        zIndex: 1000,
-                                        boxShadow: "0 2px 10px rgba(0,0,0,0.17)",
-                                    }}
-                                >
-                                    ใช้ตำแหน่งปัจจุบัน
-                                </Button>
+                                Add Data to Layer
+                            </Button>
+                           <LayerControl
+                                layers={layers}
+                                visibleLayerIds={visibleLayerIds}
+                                onVisibilityChange={handleVisibilityChange}
+                           />
+                        </Col>
 
-                                <MapWithBinsAndShape
-                                    binPoints={points}
-                                    selectedPointId={selectedPointId}
-                                    onSelectPoint={handleSelectPoint}
-                                    currentLocation={location}
-                                    loading={loadingPoints}
-                                    mapHeight={mapHeight}
-                                />
+                        <Col span={24}>
+                            <Card title="Details" id="detail-section">
+                                {selectedObject ? (
+                                    <div>
+                                        <h4>{selectedObject.properties.name || 'Selected Object'}</h4>
+                                        {selectedObject.images && selectedObject.images.length > 0 && (
+                                            <Image.PreviewGroup>
+                                                <Space wrap>
+                                                    {selectedObject.images.map((img, index) => (
+                                                        <Image key={index} width={80} src={`${SERVER_URL}/${img}`} />
+                                                    ))}
+                                                </Space>
+                                            </Image.PreviewGroup>
+                                        )}
+                                        <pre style={{ maxHeight: 300, overflow: 'auto', marginTop: 16 }}>
+                                            {JSON.stringify(selectedObject.properties, null, 2)}
+                                        </pre>
+                                    </div>
+                                ) : (
+                                    <p>Click on an object on the map to see its details.</p>
+                                )}
                             </Card>
                         </Col>
-
-                        {/* Stats & Manage */}
-                        <Col xs={24} md={10}>
-                            <Row gutter={[16, 16]}>
-                                <Col span={8}>
-                                    <Card hoverable>
-                                        <Statistic
-                                            title="จุดติดตั้ง"
-                                            value={totalBins}
-                                            prefix={<EnvironmentOutlined />}
-                                            valueStyle={{ color: "#1565c0" }}
-                                        />
-                                    </Card>
-                                </Col>
-                                <Col span={8}>
-                                    <Card hoverable>
-                                        <Statistic
-                                            title="ชำรุด"
-                                            value={brokenBins}
-                                            prefix={<DeleteOutlined />}
-                                            valueStyle={{
-                                                color: brokenBins ? "#e53935" : "#388e3c",
-                                            }}
-                                        />
-                                    </Card>
-                                </Col>
-                                <Col span={8}>
-                                    <Card hoverable>
-                                        <Statistic
-                                            title="สูญหาย"
-                                            value={lostBins}
-                                            prefix={<DeleteOutlined />}
-                                            valueStyle={{
-                                                color: lostBins ? "#ffa726" : "#388e3c",
-                                            }}
-                                        />
-                                    </Card>
-                                </Col>
-
-                                <Col span={24}>
-                                    <Card hoverable id="manage-section" styles={{ body: { padding: 12 } }}>
-                                        {loadingNearby ? (
-                                            <Spin>กำลังค้นหาจุดใกล้เคียง...</Spin>
-                                        ) : selectedPointId ? (
-                                            <BinDetailCard
-                                                pointId={selectedPointId}
-                                                onBack={handleClearSelection}
-                                                onStatusChanged={handleStatusChanged}
-                                            />
-                                        ) : (
-                                            <NearbyBinTable
-                                                data={nearbyPoints}
-                                                onSelect={handleSelectPoint}
-                                                onAdd={handleAddPoint}
-                                            />
-                                        )}
-                                    </Card>
-                                </Col>
-                            </Row>
-                        </Col>
                     </Row>
-                </>
-            )}
+                </Col>
+            </Row>
         </div>
     );
 };
