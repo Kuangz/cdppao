@@ -58,13 +58,18 @@ const getLayerById = async (req, res) => {
 // @access  Admin
 const updateLayer = async (req, res) => {
     try {
-        const { name, geometryType, fields } = req.body;
+        const { name, geometryType, fields, displaySettings } = req.body;
         const layer = await Layer.findById(req.params.id);
 
         if (layer) {
-            layer.name = name || layer.name;
-            layer.geometryType = geometryType || layer.geometryType;
-            layer.fields = fields || layer.fields;
+            layer.name = name ?? layer.name;
+            layer.geometryType = geometryType ?? layer.geometryType;
+            layer.fields = fields ?? layer.fields;
+
+            // Update displaySettings. If it's not provided, keep the old one.
+            if (displaySettings) {
+                layer.displaySettings = displaySettings;
+            }
 
             const updatedLayer = await layer.save();
             res.json(updatedLayer);

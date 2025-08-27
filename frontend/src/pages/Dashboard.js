@@ -8,6 +8,7 @@ import { Image, Space } from 'antd';
 import DynamicMap from '../components/Map/DynamicMap';
 import LayerControl from '../components/LayerControl';
 import GeoObjectForm from '../components/GeoObjectForm';
+import ObjectDetailCard from '../components/ObjectDetailCard';
 import useCurrentLocation from '../hooks/useCurrentLocation';
 import useResponsiveMapHeight from '../hooks/useResponsiveMapHeight';
 
@@ -162,30 +163,17 @@ const Dashboard = () => {
                                 onVisibilityChange={handleVisibilityChange}
                             />
                             <div id="detail-section" style={{ marginTop: '16px' }}>
-                                <h4>Details</h4>
-                                <hr />
-                                {selectedObject ? (
-                                    <div>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                            <h5 style={{ margin: 0 }}>{selectedObject.properties.name || 'Selected Object'}</h5>
-                                            <Button size="small" onClick={() => setPanelMode('edit')}>Edit</Button>
-                                        </div>
-                                        {selectedObject.images && selectedObject.images.length > 0 && (
-                                            <Image.PreviewGroup>
-                                                <Space wrap>
-                                                    {selectedObject.images.map((img, index) => (
-                                                        <Image key={index} width={80} src={`${SERVER_URL}/${img}`} />
-                                                    ))}
-                                                </Space>
-                                            </Image.PreviewGroup>
-                                        )}
-                                        <pre style={{ maxHeight: 300, overflow: 'auto', marginTop: 16, backgroundColor: '#fff', padding: '8px' }}>
-                                            {JSON.stringify(selectedObject.properties, null, 2)}
-                                        </pre>
-                                    </div>
-                                ) : (
-                                    <p>Click on an object on the map to see its details.</p>
-                                )}
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                                    <h4 style={{ margin: 0 }}>Details</h4>
+                                    {selectedObject && panelMode === 'details' && (
+                                        <Button size="small" onClick={() => setPanelMode('edit')}>Edit</Button>
+                                    )}
+                                </div>
+
+                                <ObjectDetailCard
+                                    object={selectedObject}
+                                    layer={layers.find(l => l._id === selectedObject?.layerId)}
+                                />
                             </div>
                         </>
                     )}
