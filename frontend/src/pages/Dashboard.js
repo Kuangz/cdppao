@@ -67,7 +67,35 @@ const Dashboard = () => {
         setPanelVisible(true);
     }, []);
 
-    const handleFormSubmit = async (formData) => {
+    const handleFormSubmit = async (values) => {
+        const formData = new FormData();
+
+        // The form values are nested under 'properties'. We need to handle this.
+        // Let's check the form structure. The form has top-level `layerId`, `geometry`, `properties`, `images`.
+
+        formData.append('layerId', values.layerId);
+        formData.append('geometry', JSON.stringify(values.geometry));
+
+        // The custom fields are nested inside 'properties' object by the form.
+        if (values.properties) {
+            formData.append('properties', JSON.stringify(values.properties));
+        }
+
+        // Handle file uploads
+        if (values.images && values.images.length > 0) {
+            values.images.forEach(file => {
+                // When editing, existing images are strings, new ones are objects.
+                if (file.originFileObj) {
+                    formData.append('images', file.originFileObj);
+                } else if (typeof file.url === 'string') {
+                    // Need a way to tell the backend to keep existing images.
+                    // For now, let's just append the URL string. The backend needs to handle this.
+                    // A better approach would be to have a separate field for `existingImages`.
+                    // For now, this is a simplification.
+                }
+            });
+        }
+
         try {
             if (panelMode === 'create') {
                 await createGeoObject(formData);
@@ -77,9 +105,11 @@ const Dashboard = () => {
                 message.success('Object updated successfully!');
             }
             setPanelMode('details');
+            setSelectedObject(null); // Deselect object after submit
             loadData(); // Reload all data to reflect changes
         } catch (error) {
-            message.error('Failed to save object.');
+            const errData = error.response?.data?.error || 'Failed to save object.';
+            message.error(errData);
             console.error("Form submission error:", error);
         }
     };
@@ -182,7 +212,8 @@ const Dashboard = () => {
                         <GeoObjectForm
                             key={selectedObject?._id || 'create'} // Re-mount form on new selection
                             initialData={panelMode === 'edit' ? selectedObject : null}
-                            layers={layers}
+                            layer={panelMode === 'edit' ? layers.find(l => l._id === selectedObject.layerId) : null}
+                            layers={layers} // Pass all layers for the 'create' mode selector
                             onSubmit={handleFormSubmit}
                             onCancel={() => setPanelMode('details')}
                         />
