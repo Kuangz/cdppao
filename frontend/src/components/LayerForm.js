@@ -1,10 +1,16 @@
-import React from 'react';
-import { Form, Input, Select, Button, Space } from 'antd';
+import React, { useState } from 'react';
+import { Form, Input, Select, Button, Space, Popover } from 'antd';
 import { MinusCircleOutlined, PlusOutlined } from '@ant-design/icons';
+import { SketchPicker } from 'react-color';
 
 const { Option } = Select;
 
 const LayerForm = ({ form, onFinish, initialValues }) => {
+    const geometryType = Form.useWatch('geometryType', form);
+    const [displayColorPicker, setDisplayColorPicker] = useState(false);
+    const color = Form.useWatch('color', form);
+
+
     return (
         <Form
             form={form}
@@ -32,6 +38,50 @@ const LayerForm = ({ form, onFinish, initialValues }) => {
                     <Option value="LineString">LineString</Option>
                 </Select>
             </Form.Item>
+
+            {geometryType === 'Point' && (
+                <Form.Item name="icon" label="Icon">
+                    <Select placeholder="Select an icon">
+                        <Option value="blue">Blue</Option>
+                        <Option value="gold">Gold</Option>
+                        <Option value="red">Red</Option>
+                        <Option value="green">Green</Option>
+                        <Option value="orange">Orange</Option>
+                        <Option value="yellow">Yellow</Option>
+                        <Option value="violet">Violet</Option>
+                        <Option value="grey">Grey</Option>
+                        <Option value="black">Black</Option>
+                    </Select>
+                </Form.Item>
+            )}
+
+            {(geometryType === 'Polygon' || geometryType === 'LineString') && (
+                <Form.Item label="Color">
+                    <Popover
+                        content={
+                            <SketchPicker
+                                color={color}
+                                onChangeComplete={(color) => form.setFieldsValue({ color: color.hex })}
+                            />
+                        }
+                        trigger="click"
+                        visible={displayColorPicker}
+                        onVisibleChange={setDisplayColorPicker}
+                    >
+                        <div style={{ display: 'flex', alignItems: 'center' }}>
+                            <div style={{
+                                width: '32px',
+                                height: '32px',
+                                borderRadius: '2px',
+                                background: color,
+                                border: '1px solid #ccc',
+                                cursor: 'pointer'
+                            }} />
+                            <Input value={color} style={{ marginLeft: 8 }} readOnly />
+                        </div>
+                    </Popover>
+                </Form.Item>
+            )}
 
             <h4>Custom Fields</h4>
             <Form.List name="fields">

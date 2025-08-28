@@ -5,7 +5,7 @@ const mongoose = require('mongoose');
 // @route   POST /api/layers
 // @access  Admin
 const createLayer = async (req, res) => {
-    const { name, geometryType, fields } = req.body;
+    const { name, geometryType, fields, color, icon } = req.body;
 
     try {
         const layerExists = await Layer.findOne({ name });
@@ -16,7 +16,9 @@ const createLayer = async (req, res) => {
         const layer = new Layer({
             name,
             geometryType,
-            fields
+            fields,
+            color,
+            icon
         });
 
         const createdLayer = await layer.save();
@@ -59,13 +61,15 @@ const getLayerById = async (req, res) => {
 // @access  Admin
 const updateLayer = async (req, res) => {
     try {
-        const { name, geometryType, fields } = req.body;
+        const { name, geometryType, fields, color, icon } = req.body;
         const layer = await Layer.findById(req.params.id);
 
         if (layer) {
             layer.name = name || layer.name;
             layer.geometryType = geometryType || layer.geometryType;
             layer.fields = fields || layer.fields;
+            layer.color = color || layer.color;
+            layer.icon = icon || layer.icon;
 
             const updatedLayer = await layer.save();
             res.json(updatedLayer);

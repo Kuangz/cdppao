@@ -40,7 +40,15 @@ const LayerSchema = new mongoose.Schema({
         enum: ['Point', 'Polygon', 'LineString']
     },
     // An array of custom fields for this layer.
-    fields: [FieldSchema]
+    fields: [FieldSchema],
+    color: {
+        type: String,
+        default: '#ff0000' // Default to red
+    },
+    icon: {
+        type: String,
+        default: 'default' // Default icon
+    }
 }, {
     timestamps: true // Automatically adds createdAt and updatedAt timestamps
 });
