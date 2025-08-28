@@ -33,7 +33,7 @@ const GeoObjectSchema = new mongoose.Schema({
         type: {
             type: String,
             required: true,
-            enum: ['Point', 'Polygon', 'LineString']
+            enum: ['Point', 'LineString', 'Polygon', 'MultiPoint', 'MultiLineString', 'MultiPolygon']
         },
         coordinates: {
             type: [], // Allows for flexible coordinate structures (e.g., [lng, lat] or [[[lng, lat], ...]])
