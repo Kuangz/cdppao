@@ -49,4 +49,3 @@ Thumbs.db
 *.wmv
 
 backend/uploads/garbage_bins/
-frontend/package-lock.json

@@ -2,14 +2,19 @@ import React, { useState } from 'react';
 import { Form, Input, Select, Button, Space, Popover } from 'antd';
 import { MinusCircleOutlined, PlusOutlined } from '@ant-design/icons';
 import { SketchPicker } from 'react-color';
+import IconPicker from './IconPicker';
+import * as FaIcons from 'react-icons/fa';
 
 const { Option } = Select;
 
 const LayerForm = ({ form, onFinish, initialValues }) => {
     const geometryType = Form.useWatch('geometryType', form);
     const [displayColorPicker, setDisplayColorPicker] = useState(false);
+    const [displayIconPicker, setDisplayIconPicker] = useState(false);
     const color = Form.useWatch('color', form);
+    const icon = Form.useWatch('icon', form);
 
+    const SelectedIcon = icon ? FaIcons[icon] : null;
 
     return (
         <Form
@@ -41,27 +46,33 @@ const LayerForm = ({ form, onFinish, initialValues }) => {
 
             {geometryType === 'Point' && (
                 <Form.Item name="icon" label="Icon">
-                    <Select placeholder="Select an icon">
-                        <Option value="blue">Blue</Option>
-                        <Option value="gold">Gold</Option>
-                        <Option value="red">Red</Option>
-                        <Option value="green">Green</Option>
-                        <Option value="orange">Orange</Option>
-                        <Option value="yellow">Yellow</Option>
-                        <Option value="violet">Violet</Option>
-                        <Option value="grey">Grey</Option>
-                        <Option value="black">Black</Option>
-                    </Select>
+                    <Popover
+                        content={
+                            <IconPicker
+                                onSelect={(iconName) => {
+                                    form.setFieldsValue({ icon: iconName });
+                                    setDisplayIconPicker(false);
+                                }}
+                            />
+                        }
+                        trigger="click"
+                        visible={displayIconPicker}
+                        onVisibleChange={setDisplayIconPicker}
+                    >
+                        <Button>
+                            {SelectedIcon ? <SelectedIcon /> : 'Select Icon'}
+                        </Button>
+                    </Popover>
                 </Form.Item>
             )}
 
             {(geometryType === 'Polygon' || geometryType === 'LineString') && (
-                <Form.Item label="Color">
+                <Form.Item name="color" label="Color">
                     <Popover
                         content={
                             <SketchPicker
                                 color={color}
-                                onChangeComplete={(color) => form.setFieldsValue({ color: color.hex })}
+                                onChange={(color) => form.setFieldsValue({ color: color.hex })}
                             />
                         }
                         trigger="click"
@@ -77,7 +88,11 @@ const LayerForm = ({ form, onFinish, initialValues }) => {
                                 border: '1px solid #ccc',
                                 cursor: 'pointer'
                             }} />
-                            <Input value={color} style={{ marginLeft: 8 }} readOnly />
+                            <Input
+                                value={color}
+                                style={{ marginLeft: 8 }}
+                                onChange={(e) => form.setFieldsValue({ color: e.target.value })}
+                            />
                         </div>
                     </Popover>
                 </Form.Item>

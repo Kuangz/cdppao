@@ -1,8 +1,10 @@
 import React from 'react';
+import ReactDOMServer from 'react-dom/server';
 import { MapContainer, TileLayer, Marker, Polygon, Polyline, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
+import './Map.css';
 import L from 'leaflet';
-import MapUpdater from './MapUpdater';
+import * as FaIcons from 'react-icons/fa';
 
 // Fix for default marker icon issue with webpack
 delete L.Icon.Default.prototype._getIconUrl;
@@ -15,20 +17,20 @@ L.Icon.Default.mergeOptions({
 
 const DynamicMap = ({ layers, geoObjects, visibleLayerIds, onSelectObject, center, zoom }) => {
 
-    const getIcon = (iconName = 'blue') => {
-        // In a real app, you might have a more sophisticated way to manage icons
-        // For now, we'll use simple colored markers as placeholders
-        if (iconName === 'default' || !iconName) {
+    const getIcon = (iconName = 'FaBeer') => {
+        if (!iconName || !FaIcons[iconName]) {
             return new L.Icon.Default();
         }
-        const iconUrl = `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-${iconName}.png`;
-        return new L.Icon({
-            iconUrl,
-            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-            iconSize: [25, 41],
-            iconAnchor: [12, 41],
-            popupAnchor: [1, -34],
-            shadowSize: [41, 41]
+
+        const IconComponent = FaIcons[iconName];
+        const iconHtml = ReactDOMServer.renderToString(<IconComponent />);
+
+        return L.divIcon({
+            html: iconHtml,
+            className: 'custom-react-icon',
+            iconSize: [24, 24],
+            iconAnchor: [12, 24],
+            popupAnchor: [0, -24],
         });
     };
 
@@ -71,8 +73,7 @@ const DynamicMap = ({ layers, geoObjects, visibleLayerIds, onSelectObject, cente
     };
 
     return (
-        <MapContainer center={[13.7563, 100.5018]} zoom={6} style={{ height: '100%', width: '100%' }}>
-            <MapUpdater center={center} zoom={zoom} />
+        <MapContainer center={center || [13.7563, 100.5018]} zoom={zoom || 6} style={{ height: '100%', width: '100%' }}>
             <TileLayer
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'

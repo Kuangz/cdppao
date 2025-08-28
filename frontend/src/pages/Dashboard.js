@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Row, Col, Card, Spin, message, Button, Space } from 'antd';
-import { MenuFoldOutlined, MenuUnfoldOutlined, PlusOutlined } from '@ant-design/icons';
+import { Row, Col, Card, Spin, message, Button } from 'antd';
+import { PlusOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { getLayers } from '../api/layer';
 import { getGeoObjectsByLayer } from '../api/geoObject';
@@ -18,11 +18,10 @@ const Dashboard = () => {
     const [visibleLayerIds, setVisibleLayerIds] = useState([]);
     const [loading, setLoading] = useState(true);
     const [selectedObject, setSelectedObject] = useState(null);
-    const [isPanelVisible, setPanelVisible] = useState(true);
 
     const navigate = useNavigate();
     const { location } = useCurrentLocation(true);
-    // const mapHeight = useResponsiveMapHeight(600, 400); // Deprecated for full height
+    const mapHeight = useResponsiveMapHeight(600, 400);
 
     const loadData = useCallback(async () => {
         setLoading(true);
@@ -60,15 +59,15 @@ const Dashboard = () => {
 
     const handleSelectObject = useCallback((object) => {
         setSelectedObject(object);
-        setPanelVisible(true); // Ensure panel is visible when an object is selected
+         setTimeout(() => {
+            document.getElementById("detail-section")?.scrollIntoView({ behavior: "smooth" });
+        }, 200);
     }, []);
 
     const handleVisibilityChange = (newVisibleIds) => {
         setVisibleLayerIds(newVisibleIds);
     };
 
-    // Assuming a header height of ~64px. This can be adjusted.
-    const mapHeight = 'calc(100vh - 64px)';
     const centerStyle = { textAlign: "center", padding: 64, height: mapHeight, display: 'flex', justifyContent: 'center', alignItems: 'center' };
 
     if (loading) {
@@ -80,89 +79,75 @@ const Dashboard = () => {
     }
 
     return (
-        <div style={{ height: mapHeight, width: '100%', display: 'flex' }}>
-            {/* Map Section */}
-            <div style={{ flex: 1, height: '100%', position: 'relative', transition: 'width 0.3s ease' }}>
-                <Card
-                    styles={{
-                        body: {
-                            padding: 0,
-                            height: '100%',
-                        },
-                    }}
-                    style={{ height: '100%' }}
-                >
-                    <Button
-                        icon={isPanelVisible ? <MenuFoldOutlined /> : <MenuUnfoldOutlined />}
-                        onClick={() => setPanelVisible(!isPanelVisible)}
-                        style={{
-                            position: 'absolute',
-                            top: 10,
-                            right: 10,
-                            zIndex: 1000, // Ensure it's above the map tiles
-                            backgroundColor: 'rgba(255, 255, 255, 0.8)',
-                            borderColor: '#ccc'
+        <div style={{ maxWidth: 1400, margin: 'auto', padding: '16px 4px' }}>
+            <Row gutter={[16, 16]}>
+                {/* Map Section */}
+                <Col xs={24} md={18}>
+                    <Card
+                        styles={{
+                            body: {
+                                padding: 0,
+                                position: "relative",
+                                height: mapHeight,
+                            },
                         }}
-                    />
-                    <DynamicMap
-                        center={location ? [location.lat, location.lng] : undefined}
-                        zoom={location ? 13 : 6}
-                        layers={layers}
-                        geoObjects={geoObjects}
-                        visibleLayerIds={visibleLayerIds}
-                        onSelectObject={handleSelectObject}
-                    />
-                </Card>
-            </div>
-
-            {/* Controls & Details Panel */}
-            <div style={{
-                width: isPanelVisible ? '350px' : '0px',
-                transition: 'width 0.3s ease',
-                overflow: 'hidden',
-                height: '100%',
-                backgroundColor: '#f0f2f5'
-            }}>
-                <Card title="Controls & Details" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
-                    bodyStyle={{ flex: 1, overflowY: 'auto', padding: '16px' }}>
-                    <Button
-                        type="primary"
-                        icon={<PlusOutlined />}
-                        onClick={() => navigate('/geodata/new')}
-                        style={{ width: '100%', marginBottom: 16 }}
                     >
-                        Add Data to Layer
-                    </Button>
-                    <LayerControl
-                        layers={layers}
-                        visibleLayerIds={visibleLayerIds}
-                        onVisibilityChange={handleVisibilityChange}
-                    />
-                    <div id="detail-section" style={{ marginTop: '16px' }}>
-                        <h4>Details</h4>
-                        <hr/>
-                        {selectedObject ? (
-                            <div>
-                                <h5>{selectedObject.properties.name || 'Selected Object'}</h5>
-                                {selectedObject.images && selectedObject.images.length > 0 && (
-                                    <Image.PreviewGroup>
-                                        <Space wrap>
-                                            {selectedObject.images.map((img, index) => (
-                                                <Image key={index} width={80} src={`${SERVER_URL}/${img}`} />
-                                            ))}
-                                        </Space>
-                                    </Image.PreviewGroup>
+                        <DynamicMap
+                            center={location ? [location.lat, location.lng] : undefined}
+                            zoom={location ? 13 : 6}
+                            layers={layers}
+                            geoObjects={geoObjects}
+                            visibleLayerIds={visibleLayerIds}
+                            onSelectObject={handleSelectObject}
+                        />
+                    </Card>
+                </Col>
+
+                {/* Controls & Details Section */}
+                <Col xs={24} md={6}>
+                    <Row gutter={[16, 16]}>
+                        <Col span={24}>
+                            <Button
+                                type="primary"
+                                icon={<PlusOutlined />}
+                                onClick={() => navigate('/geodata/new')}
+                                style={{ width: '100%', marginBottom: 16 }}
+                            >
+                                Add Data to Layer
+                            </Button>
+                           <LayerControl
+                                layers={layers}
+                                visibleLayerIds={visibleLayerIds}
+                                onVisibilityChange={handleVisibilityChange}
+                           />
+                        </Col>
+
+                        <Col span={24}>
+                            <Card title="Details" id="detail-section">
+                                {selectedObject ? (
+                                    <div>
+                                        <h4>{selectedObject.properties.name || 'Selected Object'}</h4>
+                                        {selectedObject.images && selectedObject.images.length > 0 && (
+                                            <Image.PreviewGroup>
+                                                <Space wrap>
+                                                    {selectedObject.images.map((img, index) => (
+                                                        <Image key={index} width={80} src={`${SERVER_URL}/${img}`} />
+                                                    ))}
+                                                </Space>
+                                            </Image.PreviewGroup>
+                                        )}
+                                        <pre style={{ maxHeight: 300, overflow: 'auto', marginTop: 16 }}>
+                                            {JSON.stringify(selectedObject.properties, null, 2)}
+                                        </pre>
+                                    </div>
+                                ) : (
+                                    <p>Click on an object on the map to see its details.</p>
                                 )}
-                                <pre style={{ maxHeight: 300, overflow: 'auto', marginTop: 16, backgroundColor: '#fff', padding: '8px' }}>
-                                    {JSON.stringify(selectedObject.properties, null, 2)}
-                                </pre>
-                            </div>
-                        ) : (
-                            <p>Click on an object on the map to see its details.</p>
-                        )}
-                    </div>
-                </Card>
-            </div>
+                            </Card>
+                        </Col>
+                    </Row>
+                </Col>
+            </Row>
         </div>
     );
 };
