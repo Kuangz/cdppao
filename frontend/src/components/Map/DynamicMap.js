@@ -4,21 +4,6 @@ import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import MapUpdater from './MapUpdater';
 
-// Helper to generate a color from a string (layer ID)
-const stringToColor = (str) => {
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-        hash = str.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    let color = '#';
-    for (let i = 0; i < 3; i++) {
-        const value = (hash >> (i * 8)) & 0xFF;
-        color += ('00' + value.toString(16)).substr(-2);
-    }
-    return color;
-};
-
-
 // Fix for default marker icon issue with webpack
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -30,8 +15,25 @@ L.Icon.Default.mergeOptions({
 
 const DynamicMap = ({ layers, geoObjects, visibleLayerIds, onSelectObject, center, zoom }) => {
 
+    const getIcon = (iconName = 'blue') => {
+        // In a real app, you might have a more sophisticated way to manage icons
+        // For now, we'll use simple colored markers as placeholders
+        if (iconName === 'default' || !iconName) {
+            return new L.Icon.Default();
+        }
+        const iconUrl = `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-${iconName}.png`;
+        return new L.Icon({
+            iconUrl,
+            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+            iconSize: [25, 41],
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34],
+            shadowSize: [41, 41]
+        });
+    };
+
     const renderObject = (object, layer) => {
-        const color = stringToColor(layer._id);
+        const { color, icon } = layer;
         const objectName = object.properties?.name || object.properties?.label || 'Unnamed Object';
 
         const eventHandlers = {
@@ -42,15 +44,14 @@ const DynamicMap = ({ layers, geoObjects, visibleLayerIds, onSelectObject, cente
 
         switch (object.geometry.type) {
             case 'Point':
-                // Leaflet expects [lat, lng]
                 const position = [object.geometry.coordinates[1], object.geometry.coordinates[0]];
+                const markerIcon = getIcon(icon);
                 return (
-                    <Marker position={position} eventHandlers={eventHandlers}>
+                    <Marker position={position} icon={markerIcon} eventHandlers={eventHandlers}>
                         <Popup>{objectName}</Popup>
                     </Marker>
                 );
             case 'Polygon':
-                // Leaflet expects array of [lat, lng]
                 const polygonCoords = object.geometry.coordinates[0].map(p => [p[1], p[0]]);
                 return (
                     <Polygon pathOptions={{ color }} positions={polygonCoords} eventHandlers={eventHandlers}>
