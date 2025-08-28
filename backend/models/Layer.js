@@ -42,6 +42,15 @@ const LayerSchema = new mongoose.Schema({
     // An array of custom fields for this layer.
     fields: [FieldSchema],
 
+    // Settings for how data from this layer is displayed in the UI.
+    displaySettings: {
+        // An array of field `name`s to be highlighted in detail views.
+        importantFields: {
+            type: [String],
+            default: []
+        }
+    },
+
     uploadHistory: [{
         filename: String,
         uploadedBy: {
@@ -53,6 +62,7 @@ const LayerSchema = new mongoose.Schema({
             default: Date.now
         }
     }],
+
     color: {
         type: String,
         default: '#ff0000' // Default to red
@@ -60,6 +70,7 @@ const LayerSchema = new mongoose.Schema({
     icon: {
         type: String,
         default: 'default' // Default icon
+
     }
 }, {
     timestamps: true // Automatically adds createdAt and updatedAt timestamps

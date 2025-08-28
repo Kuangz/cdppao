@@ -61,7 +61,7 @@ const getLayerById = async (req, res) => {
 // @access  Admin
 const updateLayer = async (req, res) => {
     try {
-        const { name, geometryType, fields, color, icon } = req.body;
+        const { name, geometryType, fields, displaySettings, color, icon } = req.body;
         const layer = await Layer.findById(req.params.id);
 
         if (layer) {
@@ -70,6 +70,11 @@ const updateLayer = async (req, res) => {
             layer.fields = fields || layer.fields;
             layer.color = color || layer.color;
             layer.icon = icon || layer.icon;
+
+            // Update displaySettings. If it's not provided, keep the old one.
+            if (displaySettings) {
+                layer.displaySettings = displaySettings;
+            }
 
             const updatedLayer = await layer.save();
             res.json(updatedLayer);
@@ -208,8 +213,8 @@ const uploadGeoJsonToLayer = async (req, res) => {
             }
             // Optional: Check if feature geometry type matches layer geometry type
             if (feature.geometry.type !== layer.geometryType) {
-                 console.warn(`Skipping feature with mismatched geometry type. Expected ${layer.geometryType}, got ${feature.geometry.type}.`);
-                 return null;
+                console.warn(`Skipping feature with mismatched geometry type. Expected ${layer.geometryType}, got ${feature.geometry.type}.`);
+                return null;
             }
 
             const sanitizedProperties = {};

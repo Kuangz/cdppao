@@ -8,6 +8,13 @@ import * as FaIcons from 'react-icons/fa';
 const { Option } = Select;
 
 const LayerForm = ({ form, onFinish, initialValues }) => {
+    const watchedFields = Form.useWatch('fields', form);
+    const fieldOptions = (watchedFields || [])
+        .filter(field => field && field.name)
+        .map(field => ({
+            label: field.label || field.name,
+            value: field.name
+        }));
     const geometryType = Form.useWatch('geometryType', form);
     const [displayColorPicker, setDisplayColorPicker] = useState(false);
     const [displayIconPicker, setDisplayIconPicker] = useState(false);
@@ -44,6 +51,17 @@ const LayerForm = ({ form, onFinish, initialValues }) => {
                 </Select>
             </Form.Item>
 
+            <Form.Item
+                label="Important Fields for Display"
+                name={['displaySettings', 'importantFields']}
+                tooltip="Select fields to be highlighted in the dashboard's detail view."
+            >
+                <Select
+                    mode="multiple"
+                    placeholder="Select fields"
+                    options={fieldOptions}
+                />
+            </Form.Item>
             {geometryType === 'Point' && (
                 <Form.Item name="icon" label="Icon">
                     <Popover
@@ -99,6 +117,7 @@ const LayerForm = ({ form, onFinish, initialValues }) => {
             )}
 
             <h4>Custom Fields</h4>
+            <p style={{ color: '#888', marginTop: '-10px', marginBottom: '12px' }}>Define the data schema for this layer.</p>
             <Form.List name="fields">
                 {(fields, { add, remove }) => (
                     <>

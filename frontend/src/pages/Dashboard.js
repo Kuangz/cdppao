@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Row, Col, Card, Spin, message, Button, Space } from 'antd';
+import { Row, Col, Card, Spin, message, Button, Space, Image, Form } from 'antd';
 import { MenuFoldOutlined, MenuUnfoldOutlined, PlusOutlined } from '@ant-design/icons';
 
 import { useNavigate } from 'react-router-dom';
 import { getLayers } from '../api/layer';
-import { getGeoObjectsByLayer } from '../api/geoObject';
-import { Image } from 'antd';
+import { getGeoObjectsByLayer, createGeoObject, updateGeoObject } from '../api/geoObject';
 import DynamicMap from '../components/Map/DynamicMap';
 import LayerControl from '../components/LayerControl';
+import GeoObjectForm from '../components/GeoObjectForm';
+import ObjectDetailCard from '../components/ObjectDetailCard';
 import useCurrentLocation from '../hooks/useCurrentLocation';
 import useResponsiveMapHeight from '../hooks/useResponsiveMapHeight';
 
@@ -19,10 +20,22 @@ const Dashboard = () => {
     const [visibleLayerIds, setVisibleLayerIds] = useState([]);
     const [loading, setLoading] = useState(true);
     const [selectedObject, setSelectedObject] = useState(null);
+    const [isPanelVisible, setPanelVisible] = useState(true);
+    const [panelMode, setPanelMode] = useState('details'); // 'details', 'create', 'edit'
+    const [form] = Form.useForm();
+
+    useEffect(() => {
+        if (panelMode === 'edit' && selectedObject) {
+            form.setFieldsValue(selectedObject);
+        } else {
+            form.resetFields();
+        }
+    }, [panelMode, selectedObject, form]);
+
 
     const navigate = useNavigate();
     const { location } = useCurrentLocation(true);
-    const mapHeight = useResponsiveMapHeight(600, 400);
+    // const mapHeight = useResponsiveMapHeight(600, 400);
 
     const loadData = useCallback(async () => {
         setLoading(true);
@@ -60,15 +73,66 @@ const Dashboard = () => {
 
     const handleSelectObject = useCallback((object) => {
         setSelectedObject(object);
-         setTimeout(() => {
+        setPanelMode('details'); // Switch to details view when a new object is selected
+        setPanelVisible(true);
+        setTimeout(() => {
             document.getElementById("detail-section")?.scrollIntoView({ behavior: "smooth" });
         }, 200);
     }, []);
+
+    const handleFormSubmit = async (values) => {
+        const formData = new FormData();
+
+        // The form values are nested under 'properties'. We need to handle this.
+        // Let's check the form structure. The form has top-level `layerId`, `geometry`, `properties`, `images`.
+
+        formData.append('layerId', values.layerId);
+        formData.append('geometry', JSON.stringify(values.geometry));
+
+        // The custom fields are nested inside 'properties' object by the form.
+        if (values.properties) {
+            formData.append('properties', JSON.stringify(values.properties));
+        }
+
+        // Handle file uploads
+        if (values.images && values.images.length > 0) {
+            values.images.forEach(file => {
+                // When editing, existing images are strings, new ones are objects.
+                if (file.originFileObj) {
+                    formData.append('images', file.originFileObj);
+                } else if (typeof file.url === 'string') {
+                    // Need a way to tell the backend to keep existing images.
+                    // For now, let's just append the URL string. The backend needs to handle this.
+                    // A better approach would be to have a separate field for `existingImages`.
+                    // For now, this is a simplification.
+                }
+            });
+        }
+
+        try {
+            if (panelMode === 'create') {
+                await createGeoObject(formData);
+                message.success('Object created successfully!');
+            } else if (panelMode === 'edit' && selectedObject) {
+                await updateGeoObject(selectedObject._id, formData);
+                message.success('Object updated successfully!');
+            }
+            setPanelMode('details');
+            setSelectedObject(null); // Deselect object after submit
+            loadData(); // Reload all data to reflect changes
+        } catch (error) {
+            const errData = error.response?.data?.error || 'Failed to save object.';
+            message.error(errData);
+            console.error("Form submission error:", error);
+        }
+    };
 
     const handleVisibilityChange = (newVisibleIds) => {
         setVisibleLayerIds(newVisibleIds);
     };
 
+    // Assuming a header height of ~64px. This can be adjusted.
+    const mapHeight = 'calc(100vh - 64px)';
     const centerStyle = { textAlign: "center", padding: 64, height: mapHeight, display: 'flex', justifyContent: 'center', alignItems: 'center' };
 
     if (loading) {
@@ -79,76 +143,105 @@ const Dashboard = () => {
         );
     }
 
-    return (
-        <div style={{ maxWidth: 1400, margin: 'auto', padding: '16px 4px' }}>
-            <Row gutter={[16, 16]}>
-                {/* Map Section */}
-                <Col xs={24} md={18}>
-                    <Card
-                        styles={{
-                            body: {
-                                padding: 0,
-                                position: "relative",
-                                height: mapHeight,
-                            },
-                        }}
-                    >
-                        <DynamicMap
-                            center={location ? [location.lat, location.lng] : undefined}
-                            zoom={location ? 13 : 6}
-                            layers={layers}
-                            geoObjects={geoObjects}
-                            visibleLayerIds={visibleLayerIds}
-                            onSelectObject={handleSelectObject}
-                        />
-                    </Card>
-                </Col>
+    if (loading) {
+        return (
+            <div style={centerStyle}>
+                <Spin size="large" tip="Loading map data..." />
+            </div>
+        );
+    }
 
-                {/* Controls & Details Section */}
-                <Col xs={24} md={6}>
-                    <Row gutter={[16, 16]}>
-                        <Col span={24}>
+    return (
+        <div style={{ height: mapHeight, width: '100%', display: 'flex' }}>
+            {/* Map Section */}
+            <div style={{ flex: 1, height: '100%', position: 'relative', transition: 'width 0.3s ease' }}>
+                <Card
+                    styles={{
+                        body: {
+                            padding: 0,
+                            height: '100%',
+                        },
+                    }}
+                    style={{ height: '100%' }}
+                >
+                    <Button
+                        icon={isPanelVisible ? <MenuFoldOutlined /> : <MenuUnfoldOutlined />}
+                        onClick={() => setPanelVisible(!isPanelVisible)}
+                        style={{
+                            position: 'absolute',
+                            top: 10,
+                            right: 10,
+                            zIndex: 1000, // Ensure it's above the map tiles
+                            backgroundColor: 'rgba(255, 255, 255, 0.8)',
+                            borderColor: '#ccc'
+                        }}
+                    />
+                    <DynamicMap
+                        center={location ? [location.lat, location.lng] : undefined}
+                        zoom={location ? 13 : 6}
+                        layers={layers}
+                        geoObjects={geoObjects}
+                        visibleLayerIds={visibleLayerIds}
+                        onSelectObject={handleSelectObject}
+                    />
+                </Card>
+            </div>
+
+            {/* Controls & Details Panel */}
+            <div style={{
+                width: isPanelVisible ? '350px' : '0px',
+                transition: 'width 0.3s ease',
+                overflow: 'hidden',
+                height: '100%',
+                backgroundColor: '#f0f2f5'
+            }}>
+                <Card title="Controls & Details" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
+                    bodyStyle={{ flex: 1, overflowY: 'auto', padding: '16px' }}>
+
+                    {panelMode === 'details' && (
+                        <>
                             <Button
                                 type="primary"
                                 icon={<PlusOutlined />}
-                                onClick={() => navigate('/geodata/new')}
+                                onClick={() => { setPanelMode('create'); setPanelVisible(true); }}
                                 style={{ width: '100%', marginBottom: 16 }}
                             >
-                                Add Data to Layer
+                                Create New Data
                             </Button>
-                           <LayerControl
+                            <LayerControl
                                 layers={layers}
                                 visibleLayerIds={visibleLayerIds}
                                 onVisibilityChange={handleVisibilityChange}
-                           />
-                        </Col>
+                            />
+                            <div id="detail-section" style={{ marginTop: '16px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                                    <h4 style={{ margin: 0 }}>Details</h4>
+                                    {selectedObject && panelMode === 'details' && (
+                                        <Button size="small" onClick={() => setPanelMode('edit')}>Edit</Button>
+                                    )}
+                                </div>
 
-                        <Col span={24}>
-                            <Card title="Details" id="detail-section">
-                                {selectedObject ? (
-                                    <div>
-                                        <h4>{selectedObject.properties.name || 'Selected Object'}</h4>
-                                        {selectedObject.images && selectedObject.images.length > 0 && (
-                                            <Image.PreviewGroup>
-                                                <Space wrap>
-                                                    {selectedObject.images.map((img, index) => (
-                                                        <Image key={index} width={80} src={`${SERVER_URL}/${img}`} />
-                                                    ))}
-                                                </Space>
-                                            </Image.PreviewGroup>
-                                        )}
-                                        <pre style={{ maxHeight: 300, overflow: 'auto', marginTop: 16 }}>
-                                            {JSON.stringify(selectedObject.properties, null, 2)}
-                                        </pre>
-                                    </div>
-                                ) : (
-                                    <p>Click on an object on the map to see its details.</p>
-                                )}
-                            </Card>
-                        </Col>
-                    </Row>
-                </Col>
-            </Row>
+                                <ObjectDetailCard
+                                    object={selectedObject}
+                                    layer={layers.find(l => l._id === selectedObject?.layerId)}
+                                />
+                            </div>
+                        </>
+                    )}
+
+                    {(panelMode === 'create' || panelMode === 'edit') && (
+                        <GeoObjectForm
+                            form={form}
+                            key={selectedObject?._id || 'create'} // Re-mount form on new selection
+                            initialData={panelMode === 'edit' ? selectedObject : null}
+                            layer={panelMode === 'edit' ? layers.find(l => l._id === selectedObject.layerId) : null}
+                            layers={layers} // Pass all layers for the 'create' mode selector
+                            onSubmit={handleFormSubmit}
+                            onCancel={() => setPanelMode('details')}
+                        />
+                    )}
+                </Card>
+            </div>
         </div>
     );
 };

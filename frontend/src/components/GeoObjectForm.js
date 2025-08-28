@@ -1,5 +1,5 @@
-import React from 'react';
-import { Form, Input, InputNumber, Switch, DatePicker, Button, Upload } from 'antd';
+import React, { useState, useEffect } from 'react';
+import { Form, Input, InputNumber, Switch, DatePicker, Button, Upload, Select } from 'antd';
 import { UploadOutlined } from '@ant-design/icons';
 import LocationPicker from './LocationPicker';
 
@@ -69,9 +69,46 @@ const renderField = (field) => {
     }
 };
 
-const GeoObjectForm = ({ form, layer, onFinish, initialValues }) => {
-    if (!layer) {
-        return <p>Please select a layer to proceed.</p>;
+const GeoObjectForm = ({ form, layers, layer, onFinish, initialValues, onCancel }) => {
+    const [selectedLayer, setSelectedLayer] = useState(layer);
+
+    useEffect(() => {
+        // If the layer prop changes (e.g., in edit mode), update the internal state
+        if (layer) {
+            setSelectedLayer(layer);
+        }
+    }, [layer]);
+
+    const handleLayerChange = (layerId) => {
+        const newSelectedLayer = layers.find(l => l._id === layerId);
+        setSelectedLayer(newSelectedLayer);
+        // Reset fields when layer changes to avoid carrying over old data
+        form.resetFields(['properties']);
+    };
+
+    // Determine if we are in edit mode
+    const isEditMode = !!initialValues;
+
+    if (!isEditMode && !selectedLayer) {
+        // In create mode, prompt to select a layer first
+        return (
+            <Form form={form} layout="vertical">
+                 <Form.Item name="layerId" label="Layer" rules={[{ required: true, message: 'Please select a layer!' }]}>
+                    <Select
+                        placeholder="Select a layer to begin"
+                        onChange={handleLayerChange}
+                        options={layers.map(l => ({ label: l.name, value: l._id }))}
+                    />
+                </Form.Item>
+                <p>Please select a layer to proceed.</p>
+            </Form>
+        );
+    }
+
+    const activeLayer = selectedLayer || layer;
+    if (!activeLayer) {
+        // This should not happen if logic is correct, but as a safeguard:
+        return <p>Error: Layer information is missing.</p>
     }
 
     return (
@@ -79,8 +116,17 @@ const GeoObjectForm = ({ form, layer, onFinish, initialValues }) => {
             form={form}
             layout="vertical"
             onFinish={onFinish}
-            initialValues={initialValues}
+            // initialValues is now controlled by form.setFieldsValue in the parent
         >
+             <Form.Item name="layerId" label="Layer" rules={[{ required: true }]}>
+                <Select
+                    placeholder="Select a layer"
+                    onChange={handleLayerChange}
+                    options={layers.map(l => ({ label: l.name, value: l._id }))}
+                    disabled={isEditMode}
+                />
+            </Form.Item>
+
             <Form.Item
                 name="geometry"
                 label="Location"
