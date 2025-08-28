@@ -183,17 +183,8 @@ const LayerManagement = () => {
                 title={() => <h2>Layer Management</h2>}
             />
             <Modal
-
                 title={editingLayer ? 'Edit Layer' : 'Create Layer'}
-                width={{
-                    xs: '90%',
-                    sm: '80%',
-                    md: '70%',
-                    lg: '60%',
-                    xl: '50%',
-                    xxl: '40%',
-                }}
-                open={isModalVisible}
+                visible={isModalVisible}
                 onCancel={handleCancel}
                 footer={[
                     <Button key="back" onClick={handleCancel}>
@@ -208,19 +199,11 @@ const LayerManagement = () => {
             </Modal>
             <Modal
                 title="Import Layer from KML"
-                open={isImportModalVisible}
+                visible={isImportModalVisible}
                 onOk={handleImport}
                 onCancel={handleImportCancel}
                 confirmLoading={loading}
                 okText="Import"
-                width={{
-                    xs: '90%',
-                    sm: '80%',
-                    md: '70%',
-                    lg: '60%',
-                    xl: '50%',
-                    xxl: '40%',
-                }}
             >
                 <Upload {...uploadProps}>
                     <Button icon={<UploadOutlined />}>Click to select a .kml file</Button>

@@ -24,6 +24,14 @@ const Dashboard = () => {
     const [panelMode, setPanelMode] = useState('details'); // 'details', 'create', 'edit'
     const [form] = Form.useForm();
 
+    useEffect(() => {
+        if (panelMode === 'edit' && selectedObject) {
+            form.setFieldsValue(selectedObject);
+        } else {
+            form.resetFields();
+        }
+    }, [panelMode, selectedObject, form]);
+
     const navigate = useNavigate();
     const { location } = useCurrentLocation(true);
     // const mapHeight = useResponsiveMapHeight(600, 400); // Deprecated for full height
@@ -158,7 +166,7 @@ const Dashboard = () => {
                     />
                     <DynamicMap
                         center={location ? [location.lat, location.lng] : undefined}
-                        zoom={location ? 15 : 6}
+                        zoom={location ? 13 : 6}
                         layers={layers}
                         geoObjects={geoObjects}
                         visibleLayerIds={visibleLayerIds}

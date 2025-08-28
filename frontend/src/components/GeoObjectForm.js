@@ -116,9 +116,9 @@ const GeoObjectForm = ({ form, layers, layer, onFinish, initialValues, onCancel 
             form={form}
             layout="vertical"
             onFinish={onFinish}
-            initialValues={initialValues}
+            // initialValues is now controlled by form.setFieldsValue in the parent
         >
-             <Form.Item name="layerId" label="Layer" initialValue={activeLayer._id} rules={[{ required: true }]}>
+             <Form.Item name="layerId" label="Layer" rules={[{ required: true }]}>
                 <Select
                     placeholder="Select a layer"
                     onChange={handleLayerChange}

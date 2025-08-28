@@ -31,7 +31,7 @@ L.Icon.Default.mergeOptions({
 const DynamicMap = ({ layers, geoObjects, visibleLayerIds, onSelectObject, center, zoom }) => {
 
     const renderObject = (object, layer) => {
-        const color = layer.color || stringToColor(layer._id);
+        const color = stringToColor(layer._id);
         const objectName = object.properties?.name || object.properties?.label || 'Unnamed Object';
 
         const eventHandlers = {
@@ -54,14 +54,14 @@ const DynamicMap = ({ layers, geoObjects, visibleLayerIds, onSelectObject, cente
                 const polygonCoords = object.geometry.coordinates[0].map(p => [p[1], p[0]]);
                 return (
                     <Polygon pathOptions={{ color }} positions={polygonCoords} eventHandlers={eventHandlers}>
-                        <Popup>{objectName}</Popup>
+                         <Popup>{objectName}</Popup>
                     </Polygon>
                 );
             case 'LineString':
                 const lineCoords = object.geometry.coordinates.map(p => [p[1], p[0]]);
                 return (
                     <Polyline pathOptions={{ color }} positions={lineCoords} eventHandlers={eventHandlers}>
-                        <Popup>{objectName}</Popup>
+                         <Popup>{objectName}</Popup>
                     </Polyline>
                 );
             default:
@@ -70,7 +70,7 @@ const DynamicMap = ({ layers, geoObjects, visibleLayerIds, onSelectObject, cente
     };
 
     return (
-        <MapContainer center={[7.8683274, 98.3978881]} zoom={14.5} style={{ height: '100%', width: '100%' }}>
+        <MapContainer center={[13.7563, 100.5018]} zoom={6} style={{ height: '100%', width: '100%' }}>
             <MapUpdater center={center} zoom={zoom} />
             <TileLayer
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
