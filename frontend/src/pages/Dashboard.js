@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Row, Col, Card, Spin, message, Button } from 'antd';
+import { Row, Col, Card, Spin, message, Button, Form } from 'antd';
 import { MenuFoldOutlined, MenuUnfoldOutlined, PlusOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { getLayers } from '../api/layer';
@@ -22,6 +22,7 @@ const Dashboard = () => {
     const [selectedObject, setSelectedObject] = useState(null);
     const [isPanelVisible, setPanelVisible] = useState(true);
     const [panelMode, setPanelMode] = useState('details'); // 'details', 'create', 'edit'
+    const [form] = Form.useForm();
 
     const navigate = useNavigate();
     const { location } = useCurrentLocation(true);
@@ -210,6 +211,7 @@ const Dashboard = () => {
 
                     {(panelMode === 'create' || panelMode === 'edit') && (
                         <GeoObjectForm
+                            form={form}
                             key={selectedObject?._id || 'create'} // Re-mount form on new selection
                             initialData={panelMode === 'edit' ? selectedObject : null}
                             layer={panelMode === 'edit' ? layers.find(l => l._id === selectedObject.layerId) : null}
