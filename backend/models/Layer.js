@@ -37,7 +37,7 @@ const LayerSchema = new mongoose.Schema({
     geometryType: {
         type: String,
         required: [true, 'Geometry type is required.'],
-        enum: ['Point', 'Polygon', 'LineString']
+        enum: ['Point', 'LineString', 'Polygon', 'MultiPoint', 'MultiLineString', 'MultiPolygon']
     },
     // An array of custom fields for this layer.
     fields: [FieldSchema],
