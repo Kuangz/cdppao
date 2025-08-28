@@ -10,8 +10,8 @@ const MapUpdater = ({ center, zoom }) => {
             const latLng = L.latLng(center[0], center[1]);
             // Use flyTo for a smooth animation to the new center
             map.flyTo(latLng, zoom || map.getZoom(), {
-                animate: true,
-                duration: 0.5 // Animation duration in seconds, reduced for responsiveness
+                animate: false,
+                duration: 0.3 // Animation duration in seconds, reduced for responsiveness
             });
         }
     }, [center, zoom, map]);

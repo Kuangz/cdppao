@@ -157,7 +157,7 @@ const Dashboard = () => {
                     />
                     <DynamicMap
                         center={location ? [location.lat, location.lng] : undefined}
-                        zoom={location ? 13 : 6}
+                        zoom={location ? 15 : 6}
                         layers={layers}
                         geoObjects={geoObjects}
                         visibleLayerIds={visibleLayerIds}
