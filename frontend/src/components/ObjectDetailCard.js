@@ -37,19 +37,18 @@ const ObjectDetailCard = ({ object, layer }) => {
             <h5 style={{ margin: 0 }}>{title}</h5>
             <hr style={{ margin: '12px 0' }} />
             <Descriptions bordered size="small" column={1}>
-                {importantFields.length > 0 ? (
-                    importantFields.map(fieldName => (
+                {importantFields.length > 0
+                    ? importantFields.map(fieldName => (
                         <Descriptions.Item label={fieldLabels[fieldName] || fieldName} key={fieldName}>
                             {renderProperty(properties[fieldName])}
                         </Descriptions.Item>
                     ))
-                ) : (
-                    <Descriptions.Item label="Data">
-                        <pre style={{ maxHeight: 300, overflow: 'auto', marginTop: 0, backgroundColor: '#fff', padding: '8px' }}>
-                            {JSON.stringify(properties, null, 2)}
-                        </pre>
-                    </Descriptions.Item>
-                )}
+                    : Object.entries(properties).map(([key, value]) => (
+                        <Descriptions.Item label={fieldLabels[key] || key} key={key}>
+                            {renderProperty(value)}
+                        </Descriptions.Item>
+                    ))
+                }
             </Descriptions>
         </div>
     );
