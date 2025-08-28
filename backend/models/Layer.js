@@ -41,6 +41,7 @@ const LayerSchema = new mongoose.Schema({
     },
     // An array of custom fields for this layer.
     fields: [FieldSchema],
+  
     uploadHistory: [{
         filename: String,
         uploadedBy: {
@@ -52,6 +53,14 @@ const LayerSchema = new mongoose.Schema({
             default: Date.now
         }
     }]
+    color: {
+        type: String,
+        default: '#ff0000' // Default to red
+    },
+    icon: {
+        type: String,
+        default: 'default' // Default icon
+    }
 }, {
     timestamps: true // Automatically adds createdAt and updatedAt timestamps
 });
