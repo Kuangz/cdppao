@@ -1,10 +1,11 @@
 const Layer = require('../models/Layer');
+const mongoose = require('mongoose');
 
 // @desc    Create a new layer
 // @route   POST /api/layers
 // @access  Admin
 const createLayer = async (req, res) => {
-    const { name, geometryType, fields } = req.body;
+    const { name, geometryType, fields, color, icon } = req.body;
 
     try {
         const layerExists = await Layer.findOne({ name });
@@ -15,7 +16,9 @@ const createLayer = async (req, res) => {
         const layer = new Layer({
             name,
             geometryType,
-            fields
+            fields,
+            color,
+            icon
         });
 
         const createdLayer = await layer.save();
@@ -58,13 +61,15 @@ const getLayerById = async (req, res) => {
 // @access  Admin
 const updateLayer = async (req, res) => {
     try {
-        const { name, geometryType, fields, displaySettings } = req.body;
+        const { name, geometryType, fields, displaySettings, color, icon } = req.body;
         const layer = await Layer.findById(req.params.id);
 
         if (layer) {
-            layer.name = name ?? layer.name;
-            layer.geometryType = geometryType ?? layer.geometryType;
-            layer.fields = fields ?? layer.fields;
+            layer.name = name || layer.name;
+            layer.geometryType = geometryType || layer.geometryType;
+            layer.fields = fields || layer.fields;
+            layer.color = color || layer.color;
+            layer.icon = icon || layer.icon;
 
             // Update displaySettings. If it's not provided, keep the old one.
             if (displaySettings) {
@@ -99,85 +104,158 @@ const deleteLayer = async (req, res) => {
     }
 };
 
-const importLayerFromKML = async (req, res) => {
-    const { JSDOM } = require('jsdom');
-    const { kml } = require('@tmcw/togeojson');
-    const iconv = require('iconv-lite');
+const importLayerFromGeoJson = async (req, res) => {
     const GeoObject = require('../models/GeoObject');
 
     if (!req.file) {
-        return res.status(400).json({ error: 'No KML file uploaded.' });
+        return res.status(400).json({ error: 'No GeoJSON file uploaded.' });
     }
 
-    const session = await mongoose.startSession();
-    session.startTransaction();
+    const useTransactions = process.env.DB_SUPPORTS_TRANSACTIONS === 'true';
+    const session = useTransactions ? await mongoose.startSession() : null;
+    if (session) session.startTransaction();
 
     try {
-        // Decode file buffer from TIS-620 to UTF-8
-        const utf8String = iconv.decode(req.file.buffer, 'TIS-620');
-
-        // Parse KML string into a DOM structure
-        const dom = new JSDOM(utf8String, { contentType: 'application/xml' });
-
-        // Convert KML DOM to GeoJSON
-        const geoJson = kml(dom.window.document);
+        const geoJson = JSON.parse(req.file.buffer.toString());
 
         if (!geoJson.features || geoJson.features.length === 0) {
-            throw new Error('KML file does not contain any features.');
+            throw new Error('GeoJSON file does not contain any features.');
         }
 
-        // --- Create the Layer ---
-        // Derive layer name from KML folder name or file name
-        const layerName = geoJson.name || req.file.originalname.replace(/\.kml$/i, '');
+        const layerName = geoJson.name || req.file.originalname.replace(/\.(geojson|json)$/i, '');
 
-        // Derive schema from the properties of the first feature
-        const firstFeatureProps = geoJson.features[0].properties;
+        // Check if a layer with this name already exists
+        const layerExists = await Layer.findOne({ name: layerName }).session(session);
+        if (layerExists) {
+            throw new Error(`A layer with the name "${layerName}" already exists.`);
+        }
+
+        const firstFeatureProps = geoJson.features[0].properties || {};
         const fields = Object.keys(firstFeatureProps).map(key => ({
-            name: key.toLowerCase().replace(/[^a-z0-9_]/gi, ''), // Sanitize name
-            label: key, // Original key as label
-            type: typeof firstFeatureProps[key] === 'number' ? 'Number' : 'String', // Simple type inference
+            name: key.toLowerCase().replace(/[^a-z0-9_]/gi, ''),
+            label: key,
+            type: typeof firstFeatureProps[key] === 'number' ? 'Number' : 'String',
             required: false
         }));
 
         const newLayer = new Layer({
             name: layerName,
-            geometryType: geoJson.features[0].geometry.type, // Assume all features have same type
+            geometryType: geoJson.features[0].geometry.type,
             fields: fields
         });
         const savedLayer = await newLayer.save({ session });
 
-
-        // --- Create GeoObjects for each feature ---
         const geoObjectPromises = geoJson.features.map(feature => {
             const sanitizedProperties = {};
-            for (const key in feature.properties) {
-                const sanitizedKey = key.toLowerCase().replace(/[^a-z0-9_]/gi, '');
-                sanitizedProperties[sanitizedKey] = feature.properties[key];
+            if (feature.properties) {
+                for (const key in feature.properties) {
+                    const sanitizedKey = key.toLowerCase().replace(/[^a-z0-9_]/gi, '');
+                    sanitizedProperties[sanitizedKey] = feature.properties[key];
+                }
             }
-
             const geoObject = new GeoObject({
                 layerId: savedLayer._id,
                 geometry: feature.geometry,
                 properties: sanitizedProperties,
-                history: [{ action: 'created', userId: req.user.id, note: 'Imported from KML' }]
+                history: [{ action: 'created', userId: req.user.id, note: 'Imported from GeoJSON' }]
             });
             return geoObject.save({ session });
         });
 
         await Promise.all(geoObjectPromises);
 
-        await session.commitTransaction();
+        if (session) await session.commitTransaction();
         res.status(201).json({ message: `Successfully imported ${geoJson.features.length} objects into new layer '${layerName}'.` });
 
     } catch (error) {
-        await session.abortTransaction();
-        console.error("KML Import Error:", error);
+        if (session) await session.abortTransaction();
+        console.error("GeoJSON Import Error:", error);
         res.status(500).json({ error: error.message });
     } finally {
-        session.endSession();
+        if (session) session.endSession();
     }
 };
 
+
+const uploadGeoJsonToLayer = async (req, res) => {
+    const { id } = req.params;
+    const GeoObject = require('../models/GeoObject');
+
+    if (!req.file) {
+        return res.status(400).json({ error: 'No GeoJSON file uploaded.' });
+    }
+
+    const useTransactions = process.env.DB_SUPPORTS_TRANSACTIONS === 'true';
+    const session = useTransactions ? await mongoose.startSession() : null;
+    if (session) session.startTransaction();
+
+    try {
+        const layer = await Layer.findById(id).session(session);
+        if (!layer) {
+            throw new Error('Layer not found.');
+        }
+
+        const geoJson = JSON.parse(req.file.buffer.toString());
+
+        if (!geoJson.features) { // It can be a FeatureCollection with empty features array
+            throw new Error('GeoJSON file must be a FeatureCollection.');
+        }
+
+        // Step 1: Delete existing GeoObjects for this layer
+        await GeoObject.deleteMany({ layerId: id }, { session });
+
+        // Step 2: Create new GeoObjects from the uploaded file
+        const geoObjectPromises = geoJson.features.map(feature => {
+            // Basic validation
+            if (!feature.geometry || !feature.geometry.type || !feature.geometry.coordinates) {
+                console.warn('Skipping feature with invalid geometry:', feature);
+                return null;
+            }
+            // Optional: Check if feature geometry type matches layer geometry type
+            if (feature.geometry.type !== layer.geometryType) {
+                console.warn(`Skipping feature with mismatched geometry type. Expected ${layer.geometryType}, got ${feature.geometry.type}.`);
+                return null;
+            }
+
+            const sanitizedProperties = {};
+            if (feature.properties) {
+                for (const key in feature.properties) {
+                    const sanitizedKey = key.toLowerCase().replace(/[^a-z0-9_]/gi, '');
+                    sanitizedProperties[sanitizedKey] = feature.properties[key];
+                }
+            }
+
+            const geoObject = new GeoObject({
+                layerId: id,
+                geometry: feature.geometry,
+                properties: sanitizedProperties,
+                history: [{ action: 'created', userId: req.user.id, note: 'Created from GeoJSON upload' }]
+            });
+            return geoObject.save({ session });
+        }).filter(p => p !== null); // Filter out skipped features
+
+        await Promise.all(geoObjectPromises);
+
+        // Step 3: Update the layer's upload history
+        const historyEntry = {
+            filename: req.file.originalname,
+            uploadedBy: req.user.id,
+            uploadedAt: new Date()
+        };
+        layer.uploadHistory.push(historyEntry);
+        await layer.save({ session });
+
+        if (session) await session.commitTransaction();
+        res.status(200).json({ message: `Successfully overwrote layer data with ${geoJson.features.length} objects.` });
+
+    } catch (error) {
+        if (session) await session.abortTransaction();
+        console.error("GeoJSON Upload Error:", error);
+        res.status(500).json({ error: error.message });
+    } finally {
+        if (session) session.endSession();
+    }
+};
 
 module.exports = {
     createLayer,
@@ -185,5 +263,6 @@ module.exports = {
     getLayerById,
     updateLayer,
     deleteLayer,
-    importLayerFromKML
+    importLayerFromGeoJson,
+    uploadGeoJsonToLayer
 };

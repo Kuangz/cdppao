@@ -37,10 +37,11 @@ const LayerSchema = new mongoose.Schema({
     geometryType: {
         type: String,
         required: [true, 'Geometry type is required.'],
-        enum: ['Point', 'Polygon', 'LineString']
+        enum: ['Point', 'LineString', 'Polygon', 'MultiPoint', 'MultiLineString', 'MultiPolygon']
     },
     // An array of custom fields for this layer.
     fields: [FieldSchema],
+
     // Settings for how data from this layer is displayed in the UI.
     displaySettings: {
         // An array of field `name`s to be highlighted in detail views.
@@ -48,6 +49,28 @@ const LayerSchema = new mongoose.Schema({
             type: [String],
             default: []
         }
+    },
+
+    uploadHistory: [{
+        filename: String,
+        uploadedBy: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'User'
+        },
+        uploadedAt: {
+            type: Date,
+            default: Date.now
+        }
+    }],
+
+    color: {
+        type: String,
+        default: '#ff0000' // Default to red
+    },
+    icon: {
+        type: String,
+        default: 'default' // Default icon
+
     }
 }, {
     timestamps: true // Automatically adds createdAt and updatedAt timestamps

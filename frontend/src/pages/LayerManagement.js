@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Table, Button, Modal, Form, message, Popconfirm, Space, Upload } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, UploadOutlined } from '@ant-design/icons';
-import { getLayers, createLayer, updateLayer, deleteLayer, importLayer } from '../api/layer';
+import { getLayers, createLayer, updateLayer, deleteLayer, importLayer, uploadGeoJsonToLayer } from '../api/layer';
 import LayerForm from '../components/LayerForm';
 
 const LayerManagement = () => {
@@ -9,6 +9,8 @@ const LayerManagement = () => {
     const [loading, setLoading] = useState(false);
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [isImportModalVisible, setIsImportModalVisible] = useState(false);
+    const [isUploadModalVisible, setIsUploadModalVisible] = useState(false);
+    const [uploadTargetLayer, setUploadTargetLayer] = useState(null);
     const [fileList, setFileList] = useState([]);
     const [editingLayer, setEditingLayer] = useState(null);
     const [form] = Form.useForm();
@@ -84,7 +86,7 @@ const LayerManagement = () => {
 
     const handleImport = async () => {
         if (fileList.length === 0) {
-            message.error("Please select a KML file to import.");
+            message.error("Please select a GeoJSON file to import.");
             return;
         }
         const formData = new FormData();
@@ -104,6 +106,44 @@ const LayerManagement = () => {
         }
     };
 
+    const showUploadModal = (layer) => {
+        setUploadTargetLayer(layer);
+        setIsUploadModalVisible(true);
+    };
+
+    const handleUploadCancel = () => {
+        setIsUploadModalVisible(false);
+        setUploadTargetLayer(null);
+        setFileList([]);
+    };
+
+    const handleUpload = async () => {
+        if (fileList.length === 0) {
+            message.error("Please select a GeoJSON file to upload.");
+            return;
+        }
+        if (!uploadTargetLayer) {
+            message.error("No layer selected for upload.");
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('file', fileList[0]);
+
+        setLoading(true);
+        try {
+            const res = await uploadGeoJsonToLayer(uploadTargetLayer._id, formData);
+            message.success(res.data.message || "Layer data uploaded successfully!");
+            handleUploadCancel();
+            fetchLayers();
+        } catch (error) {
+            const errorMessage = error.response?.data?.error || 'Failed to upload data.';
+            message.error(errorMessage);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const uploadProps = {
         onRemove: file => {
             setFileList([]);
@@ -113,7 +153,7 @@ const LayerManagement = () => {
             return false; // Prevent auto-upload
         },
         fileList,
-        accept: ".kml",
+        accept: ".geojson,.json",
         maxCount: 1,
     };
 
@@ -139,6 +179,9 @@ const LayerManagement = () => {
             key: 'actions',
             render: (_, record) => (
                 <Space>
+                    <Button icon={<UploadOutlined />} onClick={() => showUploadModal(record)}>
+                        Upload Data
+                    </Button>
                     <Button icon={<EditOutlined />} onClick={() => showModal(record)}>
                         Edit
                     </Button>
@@ -171,7 +214,7 @@ const LayerManagement = () => {
                     icon={<UploadOutlined />}
                     onClick={showImportModal}
                 >
-                    Import from KML
+                    Import from GeoJSON
                 </Button>
             </Space>
             <Table
@@ -198,7 +241,7 @@ const LayerManagement = () => {
                 <LayerForm form={form} onFinish={handleFinish} initialValues={editingLayer} />
             </Modal>
             <Modal
-                title="Import Layer from KML"
+                title="Import Layer from GeoJSON"
                 visible={isImportModalVisible}
                 onOk={handleImport}
                 onCancel={handleImportCancel}
@@ -206,8 +249,34 @@ const LayerManagement = () => {
                 okText="Import"
             >
                 <Upload {...uploadProps}>
-                    <Button icon={<UploadOutlined />}>Click to select a .kml file</Button>
+                    <Button icon={<UploadOutlined />}>Click to select a .geojson file</Button>
                 </Upload>
+            </Modal>
+            <Modal
+                title={`Upload Data to ${uploadTargetLayer?.name}`}
+                visible={isUploadModalVisible}
+                onOk={handleUpload}
+                onCancel={handleUploadCancel}
+                confirmLoading={loading}
+                width={800}
+                okText="Upload"
+            >
+                <p>Upload a new GeoJSON file to overwrite the data for this layer. The file must be a FeatureCollection. Existing data will be deleted.</p>
+                <Upload {...uploadProps}>
+                    <Button icon={<UploadOutlined />}>Click to select a .geojson file</Button>
+                </Upload>
+                <h3 style={{ marginTop: 24 }}>Upload History</h3>
+                <Table
+                    size="small"
+                    dataSource={uploadTargetLayer?.uploadHistory?.sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt))}
+                    columns={[
+                        { title: 'Filename', dataIndex: 'filename', key: 'filename' },
+                        { title: 'Uploaded At', dataIndex: 'uploadedAt', key: 'uploadedAt', render: (text) => new Date(text).toLocaleString() },
+                        { title: 'Uploaded By', dataIndex: 'uploadedBy', key: 'uploadedBy' },
+                    ]}
+                    rowKey="uploadedAt"
+                    pagination={{ pageSize: 5 }}
+                />
             </Modal>
         </div>
     );

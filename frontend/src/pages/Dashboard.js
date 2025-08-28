@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Row, Col, Card, Spin, message, Button, Form } from 'antd';
+import { Row, Col, Card, Spin, message, Button, Space, Image, Form } from 'antd';
 import { MenuFoldOutlined, MenuUnfoldOutlined, PlusOutlined } from '@ant-design/icons';
+
 import { useNavigate } from 'react-router-dom';
 import { getLayers } from '../api/layer';
 import { getGeoObjectsByLayer, createGeoObject, updateGeoObject } from '../api/geoObject';
-import { Image, Space } from 'antd';
 import DynamicMap from '../components/Map/DynamicMap';
 import LayerControl from '../components/LayerControl';
 import GeoObjectForm from '../components/GeoObjectForm';
@@ -32,9 +32,10 @@ const Dashboard = () => {
         }
     }, [panelMode, selectedObject, form]);
 
+
     const navigate = useNavigate();
     const { location } = useCurrentLocation(true);
-    // const mapHeight = useResponsiveMapHeight(600, 400); // Deprecated for full height
+    // const mapHeight = useResponsiveMapHeight(600, 400);
 
     const loadData = useCallback(async () => {
         setLoading(true);
@@ -74,6 +75,9 @@ const Dashboard = () => {
         setSelectedObject(object);
         setPanelMode('details'); // Switch to details view when a new object is selected
         setPanelVisible(true);
+        setTimeout(() => {
+            document.getElementById("detail-section")?.scrollIntoView({ behavior: "smooth" });
+        }, 200);
     }, []);
 
     const handleFormSubmit = async (values) => {
@@ -130,6 +134,14 @@ const Dashboard = () => {
     // Assuming a header height of ~64px. This can be adjusted.
     const mapHeight = 'calc(100vh - 64px)';
     const centerStyle = { textAlign: "center", padding: 64, height: mapHeight, display: 'flex', justifyContent: 'center', alignItems: 'center' };
+
+    if (loading) {
+        return (
+            <div style={centerStyle}>
+                <Spin size="large" tip="Loading map data..." />
+            </div>
+        );
+    }
 
     if (loading) {
         return (

@@ -1,23 +1,10 @@
 import React from 'react';
+import ReactDOMServer from 'react-dom/server';
 import { MapContainer, TileLayer, Marker, Polygon, Polyline, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
+import './Map.css';
 import L from 'leaflet';
-import MapUpdater from './MapUpdater';
-
-// Helper to generate a color from a string (layer ID)
-const stringToColor = (str) => {
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-        hash = str.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    let color = '#';
-    for (let i = 0; i < 3; i++) {
-        const value = (hash >> (i * 8)) & 0xFF;
-        color += ('00' + value.toString(16)).substr(-2);
-    }
-    return color;
-};
-
+import * as FaIcons from 'react-icons/fa';
 
 // Fix for default marker icon issue with webpack
 delete L.Icon.Default.prototype._getIconUrl;
@@ -30,8 +17,25 @@ L.Icon.Default.mergeOptions({
 
 const DynamicMap = ({ layers, geoObjects, visibleLayerIds, onSelectObject, center, zoom }) => {
 
+    const getIcon = (iconName = 'FaBeer') => {
+        if (!iconName || !FaIcons[iconName]) {
+            return new L.Icon.Default();
+        }
+
+        const IconComponent = FaIcons[iconName];
+        const iconHtml = ReactDOMServer.renderToString(<IconComponent />);
+
+        return L.divIcon({
+            html: iconHtml,
+            className: 'custom-react-icon',
+            iconSize: [24, 24],
+            iconAnchor: [12, 24],
+            popupAnchor: [0, -24],
+        });
+    };
+
     const renderObject = (object, layer) => {
-        const color = stringToColor(layer._id);
+        const { color, icon } = layer;
         const objectName = object.properties?.name || object.properties?.label || 'Unnamed Object';
 
         const eventHandlers = {
@@ -42,15 +46,14 @@ const DynamicMap = ({ layers, geoObjects, visibleLayerIds, onSelectObject, cente
 
         switch (object.geometry.type) {
             case 'Point':
-                // Leaflet expects [lat, lng]
                 const position = [object.geometry.coordinates[1], object.geometry.coordinates[0]];
+                const markerIcon = getIcon(icon);
                 return (
-                    <Marker position={position} eventHandlers={eventHandlers}>
+                    <Marker position={position} icon={markerIcon} eventHandlers={eventHandlers}>
                         <Popup>{objectName}</Popup>
                     </Marker>
                 );
             case 'Polygon':
-                // Leaflet expects array of [lat, lng]
                 const polygonCoords = object.geometry.coordinates[0].map(p => [p[1], p[0]]);
                 return (
                     <Polygon pathOptions={{ color }} positions={polygonCoords} eventHandlers={eventHandlers}>
@@ -70,8 +73,7 @@ const DynamicMap = ({ layers, geoObjects, visibleLayerIds, onSelectObject, cente
     };
 
     return (
-        <MapContainer center={[13.7563, 100.5018]} zoom={6} style={{ height: '100%', width: '100%' }}>
-            <MapUpdater center={center} zoom={zoom} />
+        <MapContainer center={center || [13.7563, 100.5018]} zoom={zoom || 6} style={{ height: '100%', width: '100%' }}>
             <TileLayer
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
