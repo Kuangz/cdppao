@@ -40,7 +40,18 @@ const LayerSchema = new mongoose.Schema({
         enum: ['Point', 'Polygon', 'LineString']
     },
     // An array of custom fields for this layer.
-    fields: [FieldSchema]
+    fields: [FieldSchema],
+    uploadHistory: [{
+        filename: String,
+        uploadedBy: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'User'
+        },
+        uploadedAt: {
+            type: Date,
+            default: Date.now
+        }
+    }]
 }, {
     timestamps: true // Automatically adds createdAt and updatedAt timestamps
 });

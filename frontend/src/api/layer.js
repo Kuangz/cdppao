@@ -36,10 +36,20 @@ export const updateLayer = (id, layerData) => api.put(`/layers/${id}`, layerData
 export const deleteLayer = (id) => api.delete(`/layers/${id}`);
 
 /**
- * Imports a new layer from a KML file.
- * @param {FormData} formData The form data containing the KML file.
+ * Imports a new layer from a GeoJSON file.
+ * @param {FormData} formData The form data containing the GeoJSON file.
  * @returns {Promise<AxiosResponse<any>>}
  */
 export const importLayer = (formData) => api.post("/layers/import", formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+});
+
+/**
+ * Uploads a GeoJSON file to overwrite an existing layer's data.
+ * @param {string} layerId The ID of the layer to overwrite.
+ * @param {FormData} formData The form data containing the GeoJSON file.
+ * @returns {Promise<AxiosResponse<any>>}
+ */
+export const uploadGeoJsonToLayer = (layerId, formData) => api.post(`/layers/upload/${layerId}`, formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
 });
