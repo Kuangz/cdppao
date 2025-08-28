@@ -2,6 +2,7 @@ import React from 'react';
 import { MapContainer, TileLayer, Marker, Polygon, Polyline, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
+import MapUpdater from './MapUpdater';
 
 // Fix for default marker icon issue with webpack
 delete L.Icon.Default.prototype._getIconUrl;
@@ -70,7 +71,8 @@ const DynamicMap = ({ layers, geoObjects, visibleLayerIds, onSelectObject, cente
     };
 
     return (
-        <MapContainer center={center || [13.7563, 100.5018]} zoom={zoom || 6} style={{ height: '100%', width: '100%' }}>
+        <MapContainer center={[13.7563, 100.5018]} zoom={6} style={{ height: '100%', width: '100%' }}>
+            <MapUpdater center={center} zoom={zoom} />
             <TileLayer
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
