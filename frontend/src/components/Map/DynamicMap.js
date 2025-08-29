@@ -53,13 +53,32 @@ const DynamicMap = ({ layers, geoObjects, visibleLayerIds, onSelectObject, cente
                         <Popup>{objectName}</Popup>
                     </Marker>
                 );
+            case 'MultiPoint':
+                const multiPointMarkerIcon = getIcon(icon);
+                return object.geometry.coordinates.map((coords, index) => {
+                    const position = [coords[1], coords[0]];
+                    return (
+                        <Marker key={index} position={position} icon={multiPointMarkerIcon} eventHandlers={eventHandlers}>
+                            <Popup>{objectName}</Popup>
+                        </Marker>
+                    );
+                });
             case 'Polygon':
-                const polygonCoords = object.geometry.coordinates[0].map(p => [p[1], p[0]]);
+                const polygonCoords = object.geometry.coordinates.map(ring => ring.map(p => [p[1], p[0]]));
                 return (
                     <Polygon pathOptions={{ color }} positions={polygonCoords} eventHandlers={eventHandlers}>
                          <Popup>{objectName}</Popup>
                     </Polygon>
                 );
+            case 'MultiPolygon':
+                return object.geometry.coordinates.map((polygon, index) => {
+                    const polygonCoords = polygon.map(ring => ring.map(p => [p[1], p[0]]));
+                    return (
+                        <Polygon key={index} pathOptions={{ color }} positions={polygonCoords} eventHandlers={eventHandlers}>
+                            <Popup>{objectName}</Popup>
+                        </Polygon>
+                    );
+                });
             case 'LineString':
                 const lineCoords = object.geometry.coordinates.map(p => [p[1], p[0]]);
                 return (
@@ -67,6 +86,15 @@ const DynamicMap = ({ layers, geoObjects, visibleLayerIds, onSelectObject, cente
                          <Popup>{objectName}</Popup>
                     </Polyline>
                 );
+            case 'MultiLineString':
+                return object.geometry.coordinates.map((lineCoords, index) => {
+                    const positions = lineCoords.map(p => [p[1], p[0]]);
+                    return (
+                        <Polyline key={index} pathOptions={{ color }} positions={positions} eventHandlers={eventHandlers}>
+                            <Popup>{objectName}</Popup>
+                        </Polyline>
+                    );
+                });
             default:
                 return null;
         }
