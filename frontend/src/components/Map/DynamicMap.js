@@ -73,7 +73,7 @@ const DynamicMap = ({ layers, geoObjects, visibleLayerIds, onSelectObject, cente
     };
 
     return (
-        <MapContainer center={center || [13.7563, 100.5018]} zoom={zoom || 6} style={{ height: '100%', width: '100%' }}>
+        <MapContainer center={center || [7.8883203, 98.3979144]} zoom={zoom || 15} style={{ height: '100%', width: '100%' }}>
             <TileLayer
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
