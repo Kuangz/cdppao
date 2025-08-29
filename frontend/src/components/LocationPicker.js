@@ -42,7 +42,7 @@ const ResetMapCenter = ({ center }) => {
     return null;
 };
 
-const LocationPicker = ({ value, onChange }) => {
+const LocationPicker = ({ value, onChange, isEditMode }) => {
     const mapRef = useRef(null);
     // position state ใช้ค่า initial จาก value หรือ context (geoLoc)
     const {
@@ -72,23 +72,23 @@ const LocationPicker = ({ value, onChange }) => {
         ) {
             setPosition(value);
         }
-    }, [value, position]); // intentionallyไม่ใส่ position ใน dep เพื่อกัน loop
+    }, [value]);
 
     // ดึงตำแหน่งอัตโนมัติเมื่อ mount (value, position ยังไม่มี)
     useEffect(() => {
-        if (!isValidPos(value) && !isValidPos(position)) {
+        if (!isEditMode && !isValidPos(value) && !isValidPos(position)) {
             getCurrentLocation();
         }
-    }, [value, position, getCurrentLocation]);
+    }, [isEditMode, value, position, getCurrentLocation]);
 
     // sync geoLoc → position (กรณี create/new หรือ context เปลี่ยน)
     useEffect(() => {
-        if (!isValidPos(value) && isValidPos(geoLoc)) {
+        if (!isEditMode && !isValidPos(value) && isValidPos(geoLoc)) {
             setPosition(geoLoc);
             onChange?.(geoLoc);
         }
         // eslint-disable-next-line
-    }, [geoLoc, value, onChange]);
+    }, [isEditMode, geoLoc, value, onChange]);
 
     // ถ้ากดปุ่ม "ใช้ตำแหน่งปัจจุบัน" → override
     useEffect(() => {
