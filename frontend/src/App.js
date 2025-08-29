@@ -5,6 +5,7 @@ import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import AdminPanel from "./pages/AdminPanel";
 import LayerManagement from "./pages/LayerManagement";
+import GeoObjectManagementPage from "./pages/GeoObjectManagementPage";
 import GeoObjectCreatePage from "./pages/GeoObjectCreatePage";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -83,6 +84,15 @@ function App() {
           element={
             <AdminRoute>
               <AdminPanel />
+            </AdminRoute>
+          }
+        />
+
+        <Route
+          path="/admin/layers/:layerId/objects"
+          element={
+            <AdminRoute>
+              <GeoObjectManagementPage />
             </AdminRoute>
           }
         />

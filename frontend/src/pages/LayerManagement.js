@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Table, Button, Modal, Form, message, Popconfirm, Space, Upload } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, UploadOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, DeleteOutlined, UploadOutlined, DatabaseOutlined } from '@ant-design/icons';
+import { Link } from 'react-router-dom';
 import { getLayers, createLayer, updateLayer, deleteLayer, importLayer, uploadGeoJsonToLayer } from '../api/layer';
 import LayerForm from '../components/LayerForm';
-import GeoObjectTable from '../components/GeoObjectTable';
 
 const LayerManagement = () => {
     const [layers, setLayers] = useState([]);
@@ -180,6 +180,11 @@ const LayerManagement = () => {
             key: 'actions',
             render: (_, record) => (
                 <Space>
+                    <Link to={`/admin/layers/${record._id}/objects`}>
+                        <Button icon={<DatabaseOutlined />}>
+                            Manage Data
+                        </Button>
+                    </Link>
                     <Button icon={<UploadOutlined />} onClick={() => showUploadModal(record)}>
                         Upload Data
                     </Button>
@@ -225,22 +230,10 @@ const LayerManagement = () => {
                 rowKey="_id"
                 bordered
                 title={() => <h2>Layer Management</h2>}
-                expandable={{
-                    expandedRowRender: layer => <GeoObjectTable layer={layer} />,
-                    rowExpandable: layer => true,
-                }}
             />
             <Modal
                 title={editingLayer ? 'Edit Layer' : 'Create Layer'}
-                width={{
-                    xs: '90%',
-                    sm: '80%',
-                    md: '70%',
-                    lg: '60%',
-                    xl: '50%',
-                    xxl: '40%',
-                }}
-                open={isModalVisible}
+                visible={isModalVisible}
                 onCancel={handleCancel}
                 footer={[
                     <Button key="back" onClick={handleCancel}>
@@ -255,15 +248,7 @@ const LayerManagement = () => {
             </Modal>
             <Modal
                 title="Import Layer from GeoJSON"
-                width={{
-                    xs: '90%',
-                    sm: '80%',
-                    md: '70%',
-                    lg: '60%',
-                    xl: '50%',
-                    xxl: '40%',
-                }}
-                open={isImportModalVisible}
+                visible={isImportModalVisible}
                 onOk={handleImport}
                 onCancel={handleImportCancel}
                 confirmLoading={loading}
@@ -275,18 +260,11 @@ const LayerManagement = () => {
             </Modal>
             <Modal
                 title={`Upload Data to ${uploadTargetLayer?.name}`}
-                open={isUploadModalVisible}
+                visible={isUploadModalVisible}
                 onOk={handleUpload}
                 onCancel={handleUploadCancel}
                 confirmLoading={loading}
-                width={{
-                    xs: '90%',
-                    sm: '80%',
-                    md: '70%',
-                    lg: '60%',
-                    xl: '50%',
-                    xxl: '40%',
-                }}
+                width={800}
                 okText="Upload"
             >
                 <p>Upload a new GeoJSON file to overwrite the data for this layer. The file must be a FeatureCollection. Existing data will be deleted.</p>
