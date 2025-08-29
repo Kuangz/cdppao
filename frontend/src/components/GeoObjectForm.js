@@ -4,7 +4,7 @@ import { UploadOutlined } from '@ant-design/icons';
 import LocationPicker from './LocationPicker';
 
 // A wrapper to adapt the LocationPicker's {lat, lng} format to the form's GeoJSON format.
-const GeoJSONLocationPicker = ({ value, onChange, geometryType }) => {
+const GeoJSONLocationPicker = ({ value, onChange, geometryType, isEditMode }) => {
     // value is a GeoJSON geometry object, e.g., { type: 'Point', coordinates: [lng, lat] }
     // LocationPicker expects { lat, lng }
 
@@ -31,7 +31,7 @@ const GeoJSONLocationPicker = ({ value, onChange, geometryType }) => {
         return <p>Location picking for {geometryType} is not yet supported in this form. Please define coordinates manually.</p>
     }
 
-    return <LocationPicker value={toPickerFormat(value)} onChange={handlePickerChange} />;
+    return <LocationPicker value={toPickerFormat(value)} onChange={handlePickerChange} isEditMode={isEditMode} />;
 };
 
 
@@ -132,7 +132,7 @@ const GeoObjectForm = ({ form, layers, layer, onFinish, initialValues, onCancel 
                 label="Location"
                 rules={[{ required: true, message: 'Please select a location on the map.' }]}
             >
-                <GeoJSONLocationPicker geometryType={layer.geometryType} />
+                <GeoJSONLocationPicker geometryType={layer.geometryType} isEditMode={isEditMode} />
             </Form.Item>
 
             <Form.Item
