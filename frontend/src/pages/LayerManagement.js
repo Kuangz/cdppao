@@ -227,7 +227,15 @@ const LayerManagement = () => {
             />
             <Modal
                 title={editingLayer ? 'Edit Layer' : 'Create Layer'}
-                visible={isModalVisible}
+                width={{
+                    xs: '90%',
+                    sm: '80%',
+                    md: '70%',
+                    lg: '60%',
+                    xl: '50%',
+                    xxl: '40%',
+                }}
+                open={isModalVisible}
                 onCancel={handleCancel}
                 footer={[
                     <Button key="back" onClick={handleCancel}>
@@ -242,7 +250,15 @@ const LayerManagement = () => {
             </Modal>
             <Modal
                 title="Import Layer from GeoJSON"
-                visible={isImportModalVisible}
+                width={{
+                    xs: '90%',
+                    sm: '80%',
+                    md: '70%',
+                    lg: '60%',
+                    xl: '50%',
+                    xxl: '40%',
+                }}
+                open={isImportModalVisible}
                 onOk={handleImport}
                 onCancel={handleImportCancel}
                 confirmLoading={loading}
@@ -254,11 +270,18 @@ const LayerManagement = () => {
             </Modal>
             <Modal
                 title={`Upload Data to ${uploadTargetLayer?.name}`}
-                visible={isUploadModalVisible}
+                open={isUploadModalVisible}
                 onOk={handleUpload}
                 onCancel={handleUploadCancel}
                 confirmLoading={loading}
-                width={800}
+                width={{
+                    xs: '90%',
+                    sm: '80%',
+                    md: '70%',
+                    lg: '60%',
+                    xl: '50%',
+                    xxl: '40%',
+                }}
                 okText="Upload"
             >
                 <p>Upload a new GeoJSON file to overwrite the data for this layer. The file must be a FeatureCollection. Existing data will be deleted.</p>
