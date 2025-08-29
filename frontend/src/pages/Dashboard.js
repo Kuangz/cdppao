@@ -195,8 +195,17 @@ const Dashboard = () => {
                 height: '100%',
                 backgroundColor: '#f0f2f5'
             }}>
-                <Card title="Controls & Details" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
-                    bodyStyle={{ flex: 1, overflowY: 'auto', padding: '16px' }}>
+                <Card
+                    title="Controls & Details"
+                    style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
+                    styles={{
+                        body: {
+                            flex: 1,
+                            overflowY: 'auto',
+                            padding: '16px',
+                        },
+                    }}
+                >
 
                     {panelMode === 'details' && (
                         <>
