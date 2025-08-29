@@ -48,9 +48,6 @@ const LayerForm = ({ form, onFinish, initialValues }) => {
                     <Option value="Point">Point</Option>
                     <Option value="Polygon">Polygon</Option>
                     <Option value="LineString">LineString</Option>
-                    <Option value="MultiPoint">MultiPoint</Option>
-                    <Option value="MultiLineString">MultiLineString</Option>
-                    <Option value="MultiPolygon">MultiPolygon</Option>
                 </Select>
             </Form.Item>
 
@@ -87,35 +84,37 @@ const LayerForm = ({ form, onFinish, initialValues }) => {
                 </Form.Item>
             )}
 
-            <Form.Item name="color" label="Color">
-                <Popover
-                    content={
-                        <SketchPicker
-                            color={color}
-                            onChange={(color) => form.setFieldsValue({ color: color.hex })}
-                        />
-                    }
-                    trigger="click"
-                    visible={displayColorPicker}
-                    onVisibleChange={setDisplayColorPicker}
-                >
-                    <div style={{ display: 'flex', alignItems: 'center' }}>
-                        <div style={{
-                            width: '32px',
-                            height: '32px',
-                            borderRadius: '2px',
-                            background: color,
-                            border: '1px solid #ccc',
-                            cursor: 'pointer'
-                        }} />
-                        <Input
-                            value={color}
-                            style={{ marginLeft: 8 }}
-                            onChange={(e) => form.setFieldsValue({ color: e.target.value })}
-                        />
-                    </div>
-                </Popover>
-            </Form.Item>
+            {(geometryType === 'Polygon' || geometryType === 'LineString') && (
+                <Form.Item name="color" label="Color">
+                    <Popover
+                        content={
+                            <SketchPicker
+                                color={color}
+                                onChange={(color) => form.setFieldsValue({ color: color.hex })}
+                            />
+                        }
+                        trigger="click"
+                        visible={displayColorPicker}
+                        onVisibleChange={setDisplayColorPicker}
+                    >
+                        <div style={{ display: 'flex', alignItems: 'center' }}>
+                            <div style={{
+                                width: '32px',
+                                height: '32px',
+                                borderRadius: '2px',
+                                background: color,
+                                border: '1px solid #ccc',
+                                cursor: 'pointer'
+                            }} />
+                            <Input
+                                value={color}
+                                style={{ marginLeft: 8 }}
+                                onChange={(e) => form.setFieldsValue({ color: e.target.value })}
+                            />
+                        </div>
+                    </Popover>
+                </Form.Item>
+            )}
 
             <h4>Custom Fields</h4>
             <p style={{ color: '#888', marginTop: '-10px', marginBottom: '12px' }}>Define the data schema for this layer.</p>

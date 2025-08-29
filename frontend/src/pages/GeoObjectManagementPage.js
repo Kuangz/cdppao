@@ -1,33 +1,41 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Table, message, Spin, Button, Modal, Popconfirm, Space, Form } from 'antd';
+import { useParams, useNavigate } from 'react-router-dom';
+import { Table, message, Spin, Button, Modal, Popconfirm, Space, Form, Typography, Breadcrumb } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
+import { getLayerById } from '../api/layer';
 import { getGeoObjectsByLayer, createGeoObject, updateGeoObject, deleteGeoObject } from '../api/geoObject';
-import GeoObjectForm from './GeoObjectForm';
+import GeoObjectForm from '../components/GeoObjectForm';
 
-const GeoObjectTable = ({ layer }) => {
+const { Title } = Typography;
+
+const GeoObjectManagementPage = () => {
+    const { layerId } = useParams();
+    const navigate = useNavigate();
+    const [layer, setLayer] = useState(null);
     const [objects, setObjects] = useState([]);
     const [loading, setLoading] = useState(false);
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [editingObject, setEditingObject] = useState(null);
     const [form] = Form.useForm();
 
-    const fetchObjects = useCallback(async () => {
-        if (!layer?._id) return;
+    const fetchLayerDetails = useCallback(async () => {
         setLoading(true);
         try {
-            const res = await getGeoObjectsByLayer(layer._id);
-            setObjects(res.data);
+            const layerRes = await getLayerById(layerId);
+            setLayer(layerRes.data);
+            const objectsRes = await getGeoObjectsByLayer(layerId);
+            setObjects(objectsRes.data);
         } catch (error) {
-            message.error(`Failed to fetch objects for layer "${layer.name}".`);
-            console.error(error);
+            message.error('Failed to fetch layer details or objects.');
+            navigate('/admin/layers');
         } finally {
             setLoading(false);
         }
-    }, [layer]);
+    }, [layerId, navigate]);
 
     useEffect(() => {
-        fetchObjects();
-    }, [fetchObjects]);
+        fetchLayerDetails();
+    }, [fetchLayerDetails]);
 
     const handleShowModal = (object = null) => {
         setEditingObject(object);
@@ -58,8 +66,7 @@ const GeoObjectTable = ({ layer }) => {
                  values.images.forEach(file => {
                     if (file.originFileObj) {
                         formData.append('images', file.originFileObj);
-                    } else {
-                         // This is for existing images during an update
+                    } else if (file.url) {
                         formData.append('existingImages', file.url);
                     }
                 });
@@ -72,7 +79,7 @@ const GeoObjectTable = ({ layer }) => {
                 await createGeoObject(formData);
                 message.success('Object created successfully!');
             }
-            fetchObjects();
+            fetchLayerDetails(); // Refetch everything
             handleCancel();
         } catch (error) {
             const errorMessage = error.response?.data?.error || 'An error occurred.';
@@ -87,7 +94,7 @@ const GeoObjectTable = ({ layer }) => {
         try {
             await deleteGeoObject(id);
             message.success('Object deleted successfully!');
-            fetchObjects();
+            fetchLayerDetails(); // Refetch everything
         } catch (error) {
             message.error('Failed to delete object.');
         } finally {
@@ -107,16 +114,12 @@ const GeoObjectTable = ({ layer }) => {
                 title: field ? field.label : fieldName,
                 dataIndex: ['properties', fieldName],
                 key: fieldName,
-                 render: (text) => String(text),
+                render: (text) => String(text),
             };
         });
 
         if (columns.length === 0) {
-             columns.push({
-                title: 'ID',
-                dataIndex: '_id',
-                key: '_id',
-            });
+             columns.push({ title: 'ID', dataIndex: '_id', key: '_id' });
         }
 
         columns.push({
@@ -140,9 +143,21 @@ const GeoObjectTable = ({ layer }) => {
         return columns;
     };
 
+    if (!layer) {
+        return <Spin size="large" style={{ display: 'block', marginTop: '50px' }} />;
+    }
+
     return (
-        <div style={{ padding: '16px', backgroundColor: '#f9f9f9' }}>
-             <Space style={{ marginBottom: 16 }}>
+        <div style={{ padding: '24px' }}>
+            <Breadcrumb style={{ marginBottom: '16px' }}>
+                <Breadcrumb.Item><a href="/admin">Admin Panel</a></Breadcrumb.Item>
+                <Breadcrumb.Item><a href="/admin/layers">Layer Management</a></Breadcrumb.Item>
+                <Breadcrumb.Item>จัดการข้อมูล: {layer.name}</Breadcrumb.Item>
+            </Breadcrumb>
+
+            <Title level={2}>จัดการข้อมูล: {layer.name}</Title>
+
+            <Space style={{ marginBottom: 16 }}>
                 <Button
                     type="primary"
                     icon={<PlusOutlined />}
@@ -151,15 +166,16 @@ const GeoObjectTable = ({ layer }) => {
                     Create Object
                 </Button>
             </Space>
+
             <Table
                 columns={generateColumns()}
                 dataSource={objects}
                 loading={loading}
                 rowKey="_id"
-                pagination={{ pageSize: 5 }}
-                size="small"
+                bordered
             />
-             <Modal
+
+            <Modal
                 title={editingObject ? `Edit Object in ${layer.name}`: `Create New Object in ${layer.name}`}
                 visible={isModalVisible}
                 onCancel={handleCancel}
@@ -185,4 +201,4 @@ const GeoObjectTable = ({ layer }) => {
     );
 };
 
-export default GeoObjectTable;
+export default GeoObjectManagementPage;

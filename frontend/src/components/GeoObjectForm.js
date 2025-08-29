@@ -69,12 +69,45 @@ const renderField = (field) => {
     }
 };
 
-const GeoObjectForm = ({ form, layer, onFinish, initialValues }) => {
+const GeoObjectForm = ({ form, layers, layer, onFinish, initialValues, onCancel }) => {
+    const [selectedLayer, setSelectedLayer] = useState(layer);
+
+    useEffect(() => {
+        // If the layer prop changes (e.g., in edit mode), update the internal state
+        if (layer) {
+            setSelectedLayer(layer);
+        }
+    }, [layer]);
+
+    const handleLayerChange = (layerId) => {
+        const newSelectedLayer = layers.find(l => l._id === layerId);
+        setSelectedLayer(newSelectedLayer);
+        // Reset fields when layer changes to avoid carrying over old data
+        form.resetFields(['properties']);
+    };
 
     // Determine if we are in edit mode
     const isEditMode = !!initialValues;
 
-    if (!layer) {
+    if (!isEditMode && !selectedLayer) {
+        // In create mode, prompt to select a layer first
+        return (
+            <Form form={form} layout="vertical">
+                 <Form.Item name="layerId" label="Layer" rules={[{ required: true, message: 'Please select a layer!' }]}>
+                    <Select
+                        placeholder="Select a layer to begin"
+                        onChange={handleLayerChange}
+                        options={layers.map(l => ({ label: l.name, value: l._id }))}
+                    />
+                </Form.Item>
+                <p>Please select a layer to proceed.</p>
+            </Form>
+        );
+    }
+
+    const activeLayer = selectedLayer || layer;
+    if (!activeLayer) {
+        // This should not happen if logic is correct, but as a safeguard:
         return <p>Error: Layer information is missing.</p>
     }
 
@@ -83,9 +116,17 @@ const GeoObjectForm = ({ form, layer, onFinish, initialValues }) => {
             form={form}
             layout="vertical"
             onFinish={onFinish}
-            initialValues={initialValues}
+            // initialValues is now controlled by form.setFieldsValue in the parent
         >
-            {/* The layer is fixed, so we don't need a layer selector */}
+             <Form.Item name="layerId" label="Layer" rules={[{ required: true }]}>
+                <Select
+                    placeholder="Select a layer"
+                    onChange={handleLayerChange}
+                    options={layers?.map(l => ({ label: l.name, value: l._id }))}
+                    disabled={isEditMode}
+                />
+            </Form.Item>
+
             <Form.Item
                 name="geometry"
                 label="Location"
@@ -116,7 +157,11 @@ const GeoObjectForm = ({ form, layer, onFinish, initialValues }) => {
 
             {layer.fields.map(field => renderField(field))}
 
-            {/* The submit button is now in the modal footer */}
+            <Form.Item>
+                <Button type="primary" htmlType="submit">
+                    Submit
+                </Button>
+            </Form.Item>
         </Form>
     );
 };
