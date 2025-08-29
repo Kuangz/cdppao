@@ -1,6 +1,6 @@
 import React from 'react';
 import ReactDOMServer from 'react-dom/server';
-import { MapContainer, TileLayer, Marker, Polygon, Polyline, Popup } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Polygon, Polyline, Popup, FeatureGroup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import './Map.css';
 import L from 'leaflet';
@@ -17,13 +17,13 @@ L.Icon.Default.mergeOptions({
 
 const DynamicMap = ({ layers, geoObjects, visibleLayerIds, onSelectObject, center, zoom }) => {
 
-    const getIcon = (iconName = 'FaBeer') => {
+    const getIcon = (iconName = 'FaBeer', color = '#000000') => {
         if (!iconName || !FaIcons[iconName]) {
             return new L.Icon.Default();
         }
 
         const IconComponent = FaIcons[iconName];
-        const iconHtml = ReactDOMServer.renderToString(<IconComponent />);
+        const iconHtml = ReactDOMServer.renderToString(<IconComponent style={{ color }} />);
 
         return L.divIcon({
             html: iconHtml,
@@ -35,7 +35,8 @@ const DynamicMap = ({ layers, geoObjects, visibleLayerIds, onSelectObject, cente
     };
 
     const renderObject = (object, layer) => {
-        const { color, icon } = layer;
+        const { icon } = layer;
+        const layerColor = layer.color; // Explicitly use layer.color
         const objectName = object.properties?.name || object.properties?.label || 'Unnamed Object';
 
         const eventHandlers = {
@@ -47,54 +48,63 @@ const DynamicMap = ({ layers, geoObjects, visibleLayerIds, onSelectObject, cente
         switch (object.geometry.type) {
             case 'Point':
                 const position = [object.geometry.coordinates[1], object.geometry.coordinates[0]];
-                const markerIcon = getIcon(icon);
+                const markerIcon = getIcon(icon, layerColor);
                 return (
                     <Marker position={position} icon={markerIcon} eventHandlers={eventHandlers}>
                         <Popup>{objectName}</Popup>
                     </Marker>
                 );
             case 'MultiPoint':
-                const multiPointMarkerIcon = getIcon(icon);
-                return object.geometry.coordinates.map((coords, index) => {
-                    const position = [coords[1], coords[0]];
-                    return (
-                        <Marker key={index} position={position} icon={multiPointMarkerIcon} eventHandlers={eventHandlers}>
-                            <Popup>{objectName}</Popup>
-                        </Marker>
-                    );
-                });
+                const multiPointMarkerIcon = getIcon(icon, layerColor);
+                return (
+                    <FeatureGroup eventHandlers={eventHandlers}>
+                        {object.geometry.coordinates.map((coords, index) => {
+                            const position = [coords[1], coords[0]];
+                            return (
+                                <Marker key={index} position={position} icon={multiPointMarkerIcon} />
+                            );
+                        })}
+                        <Popup>{objectName}</Popup>
+                    </FeatureGroup>
+                );
             case 'Polygon':
                 const polygonCoords = object.geometry.coordinates.map(ring => ring.map(p => [p[1], p[0]]));
                 return (
-                    <Polygon pathOptions={{ color }} positions={polygonCoords} eventHandlers={eventHandlers}>
-                         <Popup>{objectName}</Popup>
+                    <Polygon pathOptions={{ color: layerColor }} positions={polygonCoords} eventHandlers={eventHandlers}>
+                        <Popup>{objectName}</Popup>
                     </Polygon>
                 );
             case 'MultiPolygon':
-                return object.geometry.coordinates.map((polygon, index) => {
-                    const polygonCoords = polygon.map(ring => ring.map(p => [p[1], p[0]]));
-                    return (
-                        <Polygon key={index} pathOptions={{ color }} positions={polygonCoords} eventHandlers={eventHandlers}>
-                            <Popup>{objectName}</Popup>
-                        </Polygon>
-                    );
-                });
+                return (
+                    <FeatureGroup pathOptions={{ color: layerColor }} eventHandlers={eventHandlers}>
+                        {object.geometry.coordinates.map((polygon, index) => {
+                            const polygonCoords = polygon.map(ring => ring.map(p => [p[1], p[0]]));
+                            return (
+                                <Polygon key={index} positions={polygonCoords} />
+                            );
+                        })}
+                        <Popup>{objectName}</Popup>
+                    </FeatureGroup>
+                );
             case 'LineString':
                 const lineCoords = object.geometry.coordinates.map(p => [p[1], p[0]]);
                 return (
-                    <Polyline pathOptions={{ color }} positions={lineCoords} eventHandlers={eventHandlers}>
-                         <Popup>{objectName}</Popup>
+                    <Polyline pathOptions={{ color: layerColor }} positions={lineCoords} eventHandlers={eventHandlers}>
+                        <Popup>{objectName}</Popup>
                     </Polyline>
                 );
             case 'MultiLineString':
-                return object.geometry.coordinates.map((lineCoords, index) => {
-                    const positions = lineCoords.map(p => [p[1], p[0]]);
-                    return (
-                        <Polyline key={index} pathOptions={{ color }} positions={positions} eventHandlers={eventHandlers}>
-                            <Popup>{objectName}</Popup>
-                        </Polyline>
-                    );
-                });
+                return (
+                    <FeatureGroup pathOptions={{ color: layerColor }} eventHandlers={eventHandlers}>
+                        {object.geometry.coordinates.map((lineCoords, index) => {
+                            const positions = lineCoords.map(p => [p[1], p[0]]);
+                            return (
+                                <Polyline key={index} positions={positions} />
+                            );
+                        })}
+                        <Popup>{objectName}</Popup>
+                    </FeatureGroup>
+                );
             default:
                 return null;
         }
