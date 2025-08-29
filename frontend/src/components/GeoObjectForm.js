@@ -122,7 +122,7 @@ const GeoObjectForm = ({ form, layers, layer, onFinish, initialValues, onCancel 
                 <Select
                     placeholder="Select a layer"
                     onChange={handleLayerChange}
-                    options={layers.map(l => ({ label: l.name, value: l._id }))}
+                    options={layers?.map(l => ({ label: l.name, value: l._id }))}
                     disabled={isEditMode}
                 />
             </Form.Item>
