@@ -233,8 +233,16 @@ const LayerManagement = () => {
             />
             <Modal
                 title={editingLayer ? 'Edit Layer' : 'Create Layer'}
-                visible={isModalVisible}
+                open={isModalVisible}
                 onCancel={handleCancel}
+                width={{
+                    xs: '90%',
+                    sm: '80%',
+                    md: '70%',
+                    lg: '60%',
+                    xl: '50%',
+                    xxl: '40%',
+                }}
                 footer={[
                     <Button key="back" onClick={handleCancel}>
                         Cancel
@@ -248,7 +256,7 @@ const LayerManagement = () => {
             </Modal>
             <Modal
                 title="Import Layer from GeoJSON"
-                visible={isImportModalVisible}
+                open={isImportModalVisible}
                 onOk={handleImport}
                 onCancel={handleImportCancel}
                 confirmLoading={loading}
@@ -260,7 +268,7 @@ const LayerManagement = () => {
             </Modal>
             <Modal
                 title={`Upload Data to ${uploadTargetLayer?.name}`}
-                visible={isUploadModalVisible}
+                open={isUploadModalVisible}
                 onOk={handleUpload}
                 onCancel={handleUploadCancel}
                 confirmLoading={loading}
