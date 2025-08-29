@@ -115,6 +115,8 @@ const DynamicMap = ({ layers, geoObjects, visibleLayerIds, onSelectObject, cente
             <TileLayer
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                maxNativeZoom={19}
+                maxZoom={22}
             />
             {layers
                 .filter(layer => visibleLayerIds.includes(layer._id))
