@@ -3,6 +3,7 @@ import { Table, Button, Modal, Form, message, Popconfirm, Space, Upload } from '
 import { PlusOutlined, EditOutlined, DeleteOutlined, UploadOutlined } from '@ant-design/icons';
 import { getLayers, createLayer, updateLayer, deleteLayer, importLayer, uploadGeoJsonToLayer } from '../api/layer';
 import LayerForm from '../components/LayerForm';
+import GeoObjectTable from '../components/GeoObjectTable';
 
 const LayerManagement = () => {
     const [layers, setLayers] = useState([]);
@@ -224,6 +225,10 @@ const LayerManagement = () => {
                 rowKey="_id"
                 bordered
                 title={() => <h2>Layer Management</h2>}
+                expandable={{
+                    expandedRowRender: layer => <GeoObjectTable layer={layer} />,
+                    rowExpandable: layer => true,
+                }}
             />
             <Modal
                 title={editingLayer ? 'Edit Layer' : 'Create Layer'}
