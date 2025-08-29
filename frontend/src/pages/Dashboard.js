@@ -233,10 +233,10 @@ const Dashboard = () => {
                         <GeoObjectForm
                             form={form}
                             key={selectedObject?._id || 'create'} // Re-mount form on new selection
-                            initialData={panelMode === 'edit' ? selectedObject : null}
+                            initialValues={panelMode === 'edit' ? selectedObject : null}
                             layer={panelMode === 'edit' ? layers.find(l => l._id === selectedObject.layerId) : null}
                             layers={layers} // Pass all layers for the 'create' mode selector
-                            onSubmit={handleFormSubmit}
+                            onFinish={handleFormSubmit}
                             onCancel={() => setPanelMode('details')}
                         />
                     )}
