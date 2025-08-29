@@ -37,7 +37,7 @@ const DynamicMap = ({ layers, geoObjects, visibleLayerIds, onSelectObject, cente
     const renderObject = (object, layer) => {
         const { icon } = layer;
         const layerColor = layer.color; // Explicitly use layer.color
-        const objectName = object.properties?.name || object.properties?.label || 'Unnamed Object';
+        const objectName = object.properties?.name || object.properties?.label || object.properties?.title || 'Unnamed Object';
 
         const eventHandlers = {
             click: () => {
