@@ -14,13 +14,8 @@ const MainLayout = ({ children }) => {
         {
             key: "/dashboard",
             icon: <DeleteOutlined />,
-            label: <Link to="/dashboard">Where is Bin ?</Link>,
+            label: <Link to="/dashboard">ระบบฐานข้อมูล City Data Platform</Link>,
         },
-        {
-            key: "/garbage-bins",
-            icon: <DeleteOutlined />,
-            label: <Link to="/garbage-bins">จุดติดตั้งถังขยะ</Link>,
-        }
     ];
 
     if (user?.role === 'admin') {
@@ -105,9 +100,6 @@ const MainLayout = ({ children }) => {
             >
                 <div style={{ flex: 1 }}>{children}</div>
             </Content>
-            <Footer style={{ textAlign: "center", fontSize: 13, color: "#888" }}>
-                © {new Date().getFullYear()} Phuket City | Where is Bin?
-            </Footer>
         </Layout>
     );
 };

@@ -45,6 +45,13 @@ const GeoObjectSchema = new mongoose.Schema({
         default: {}
     },
     images: [{ type: String }], // To store URLs or paths of uploaded images
+    status: {
+        type: String,
+        required: true,
+        enum: ['active', 'deleted'],
+        default: 'active',
+        index: true
+    },
     history: [ChangeHistorySchema]
 }, {
     timestamps: true

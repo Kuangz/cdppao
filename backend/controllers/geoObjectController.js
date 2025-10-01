@@ -61,12 +61,23 @@ const createGeoObject = async (req, res) => {
 
         const imageUrls = req.files ? req.files.map(file => file.path) : [];
 
+        const initialState = {
+            properties,
+            geometry,
+            images: imageUrls
+        };
+
         const geoObject = new GeoObject({
             layerId,
             geometry,
             properties,
             images: imageUrls,
-            history: [{ action: 'created', userId: req.user.id }]
+            status: 'active', // Explicitly set status on creation
+            history: [{
+                action: 'created',
+                userId: req.user.id,
+                diff: { before: null, after: initialState }
+            }]
         });
 
         const createdGeoObject = await geoObject.save();
@@ -87,7 +98,8 @@ const getGeoObjectsByLayer = async (req, res) => {
         if (!layerId) {
             return res.status(400).json({ error: 'layerId query parameter is required.' });
         }
-        const objects = await GeoObject.find({ layerId: layerId });
+        // Only return active objects
+        const objects = await GeoObject.find({ layerId: layerId, status: 'active' });
         res.json(objects);
     } catch (error) {
         res.status(500).json({ error: 'Server error' });
@@ -100,12 +112,17 @@ const getGeoObjectsByLayer = async (req, res) => {
 const getGeoObjectById = async (req, res) => {
     try {
         const geoObject = await GeoObject.findById(req.params.id).populate('layerId', 'name');
-        if (geoObject) {
+
+        // Do not return deleted objects, and only populate history for active objects
+        if (geoObject && geoObject.status !== 'deleted') {
+            // Safely populate history only for the object we intend to return
+            await geoObject.populate('history.userId', 'username');
             res.json(geoObject);
         } else {
             res.status(404).json({ error: 'Geo-object not found' });
         }
     } catch (error) {
+        console.error("Error in getGeoObjectById:", error); // Log the actual error for debugging
         res.status(500).json({ error: 'Server error' });
     }
 };
@@ -127,8 +144,12 @@ const updateGeoObject = async (req, res) => {
             return res.status(404).json({ error: 'Associated layer not found.' });
         }
 
-        // Keep track of old properties for history diff
-        const oldProperties = JSON.parse(JSON.stringify(geoObject.properties));
+        // Keep track of the full old state for history diff
+        const oldState = {
+            properties: JSON.parse(JSON.stringify(geoObject.properties)),
+            geometry: JSON.parse(JSON.stringify(geoObject.geometry)),
+            images: [...geoObject.images]
+        };
 
         if (req.body.properties) {
             const properties = JSON.parse(req.body.properties);
@@ -138,7 +159,7 @@ const updateGeoObject = async (req, res) => {
 
         if (req.body.geometry) {
             const geometry = JSON.parse(req.body.geometry);
-             if (layer.geometryType !== geometry.type) {
+            if (layer.geometryType !== geometry.type) {
                 throw new Error(`Invalid geometry type. Expected '${layer.geometryType}', but got '${geometry.type}'.`);
             }
             geoObject.geometry = geometry;
@@ -149,7 +170,7 @@ const updateGeoObject = async (req, res) => {
         let existingImages = req.body.existingImages ? (Array.isArray(req.body.existingImages) ? req.body.existingImages : [req.body.existingImages]) : [];
 
         // Find images to delete
-        const imagesToDelete = geoObject.images.filter(img => !existingImages.includes(img));
+        const imagesToDelete = oldState.images.filter(img => !existingImages.includes(img));
         imagesToDelete.forEach(filePath => {
             fs.unlink(filePath, (err) => {
                 if (err) console.error(`Failed to delete image: ${filePath}`, err);
@@ -158,10 +179,17 @@ const updateGeoObject = async (req, res) => {
 
         geoObject.images = [...existingImages, ...newImageUrls];
 
+        // Create a comprehensive diff for the history log
+        const newState = {
+            properties: geoObject.properties,
+            geometry: geoObject.geometry,
+            images: geoObject.images
+        };
+
         geoObject.history.push({
             action: 'updated',
             userId: req.user.id,
-            diff: { before: oldProperties, after: geoObject.properties }
+            diff: { before: oldState, after: newState }
         });
 
         const updatedGeoObject = await geoObject.save();
@@ -173,18 +201,30 @@ const updateGeoObject = async (req, res) => {
 };
 
 
-// @desc    Delete a geo-object
+// @desc    Delete a geo-object (soft delete)
 // @route   DELETE /api/geoobjects/:id
 // @access  Authenticated Users
 const deleteGeoObject = async (req, res) => {
     try {
         const geoObject = await GeoObject.findById(req.params.id);
-        if (geoObject) {
-            await geoObject.deleteOne();
-            res.json({ message: 'Geo-object removed' });
-        } else {
-            res.status(404).json({ error: 'Geo-object not found' });
+        if (!geoObject) {
+            return res.status(404).json({ error: 'Geo-object not found' });
         }
+
+        if (geoObject.status === 'deleted') {
+            return res.status(400).json({ error: 'Geo-object is already deleted' });
+        }
+
+        geoObject.status = 'deleted';
+        geoObject.history.push({
+            action: 'deleted',
+            userId: req.user.id,
+            changedAt: new Date()
+        });
+
+        await geoObject.save();
+        res.json({ message: 'Geo-object marked as deleted' });
+
     } catch (error) {
         res.status(500).json({ error: 'Server error' });
     }

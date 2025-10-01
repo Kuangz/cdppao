@@ -1,7 +1,12 @@
 import React from 'react';
-import { Card, Descriptions, Tag } from 'antd';
+import { Card, Descriptions, Tag, Divider } from 'antd';
+import { useAuth } from '../contexts/AuthContext';
+import HistoryTimeline from './HistoryTimeline';
 
 const ObjectDetailCard = ({ object, layer }) => {
+    const { user } = useAuth(); // Get user from AuthContext
+    const isAdmin = user?.role === 'admin';
+
     if (!object) {
         return <p>Click on an object on the map to see its details.</p>;
     }
@@ -50,6 +55,14 @@ const ObjectDetailCard = ({ object, layer }) => {
                     ))
                 }
             </Descriptions>
+
+            {/* Admin-only History Section */}
+            {isAdmin && object.history && object.history.length > 0 && (
+                <>
+                    <Divider >ประวัติการแก้ไข</Divider>
+                    <HistoryTimeline history={object.history} />
+                </>
+            )}
         </div>
     );
 };

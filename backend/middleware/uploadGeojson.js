@@ -14,7 +14,7 @@ const fileFilter = (req, file, cb) => {
 const uploadGeojson = multer({
     storage: storage,
     fileFilter: fileFilter,
-    limits: { fileSize: 1024 * 1024 * 10 } // 10MB file size limit
+    limits: { fileSize: 1024 * 1024 * 40 } // 10MB file size limit
 });
 
 module.exports = uploadGeojson;
