@@ -130,8 +130,8 @@ const Dashboard = () => {
     };
 
     // Assuming a header height of ~64px. This can be adjusted.
-    const mapHeight = 'calc(100vh - 64px)';
-    const centerStyle = { textAlign: "center", padding: 64, height: mapHeight, display: 'flex', justifyContent: 'center', alignItems: 'center' };
+    const mapHeight = 'calc(100vh - 80px)';
+    const centerStyle = { textAlign: "center", padding: 80, height: mapHeight, display: 'flex', justifyContent: 'center', alignItems: 'center' };
 
     if (loading) {
         return (
@@ -176,7 +176,7 @@ const Dashboard = () => {
                     />
                     <DynamicMap
                         center={location ? [location.lat, location.lng] : undefined}
-                        zoom={location ? 15 : 14.5}
+                        zoom={location ? 11.5 : 11}
                         layers={layers}
                         geoObjects={geoObjects}
                         visibleLayerIds={visibleLayerIds}
