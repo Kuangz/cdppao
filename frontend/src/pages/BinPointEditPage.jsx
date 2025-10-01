@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import BinPointForm from "../pages/BinPointForm";
+import BinPointForm from "./BinPointForm";
 import { fetchBinPoint } from "../api/garbageBin";
 import { Spin, Typography } from "antd";
 import { useMessageApi } from "../contexts/MessageContext";

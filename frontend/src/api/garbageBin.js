@@ -1,6 +1,6 @@
 // src/api/garbageBin.js
-import api from "../api";
-const SERVER_URL = process.env.REACT_APP_IMAGE_URL || "http://localhost:5000";
+import api from ".";
+const SERVER_URL = import.meta.env.VITE_SERVER_URL || "http://localhost:5000";
 
 // Convert \ → /, เติม SERVER_URL ถ้ายังไม่มี
 const normalizePath = (raw) => {

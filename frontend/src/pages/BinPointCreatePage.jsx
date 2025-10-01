@@ -1,6 +1,6 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import BinPointForm from "../pages/BinPointForm";
+import BinPointForm from "./BinPointForm";
 import { Typography } from "antd";
 import { useMessageApi } from "../contexts/MessageContext";
 const BinPointCreatePage = () => {

@@ -7,7 +7,7 @@ const DISPLAY_NAME_KEY = "displayName";
 
 let accessToken = localStorage.getItem("accessToken") || "";
 let onAuthError = null;
-const SERVER_URL = process.env.REACT_APP_SERVER_URL || "http://localhost:5000";
+const SERVER_URL = import.meta.env.VITE_SERVER_URL || "http://localhost:5000";
 
 export const setOnAuthError = (fn) => { onAuthError = fn; };
 

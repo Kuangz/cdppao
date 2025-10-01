@@ -14,7 +14,7 @@ const whitelist = [
     "https://yourdomain.com",
     "http://10.0.1.3:6066",   // เปลี่ยนเป็น domain จริงที่ต้องการ
     "https://whereisbin.phuketcity.go.th",
-    "http://localhost:6066",
+    "http://localhost:5174",
 ];
 const corsOptions = {
     origin: function (origin, callback) {

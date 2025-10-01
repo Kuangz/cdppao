@@ -1,7 +1,0 @@
-{
-  "dependencies": {
-    "@tmcw/togeojson": "^7.1.2",
-    "iconv-lite": "^0.7.0",
-    "jsdom": "^26.1.0"
-  }
-}

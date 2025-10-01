@@ -12,8 +12,6 @@ import ObjectDetailCard from '../components/ObjectDetailCard';
 import useCurrentLocation from '../hooks/useCurrentLocation';
 import useResponsiveMapHeight from '../hooks/useResponsiveMapHeight';
 
-const SERVER_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
-
 const Dashboard = () => {
     const [layers, setLayers] = useState([]);
     const [geoObjects, setGeoObjects] = useState({}); // { layerId: [objects] }
