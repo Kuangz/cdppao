@@ -10,11 +10,8 @@ const userRoutes = require("./routes/user.js")
 const path = require("path")
 
 const whitelist = [
-    "http://localhost:3000",   // frontend local dev
-    "https://yourdomain.com",
-    "http://10.0.1.3:6066",   // เปลี่ยนเป็น domain จริงที่ต้องการ
-    "https://whereisbin.phuketcity.go.th",
-    "http://localhost:5174",
+    "https://cdppao.phuketcity.go.th",
+    "http://localhost:5173",
 ];
 const corsOptions = {
     origin: function (origin, callback) {

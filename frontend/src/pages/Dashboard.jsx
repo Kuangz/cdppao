@@ -222,9 +222,9 @@ const Dashboard = () => {
                             />
                             <div id="detail-section" style={{ marginTop: '16px' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                                    <h4 style={{ margin: 0 }}>Details</h4>
+                                    <h4 style={{ margin: 0 }}>รายละเอียด</h4>
                                     {selectedObject && panelMode === 'details' && (
-                                        <Button size="small" onClick={() => setPanelMode('edit')}>Edit</Button>
+                                        <Button size="small" onClick={() => setPanelMode('edit')}>แก้ไข</Button>
                                     )}
                                 </div>
 

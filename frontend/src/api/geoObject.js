@@ -1,5 +1,9 @@
 import api from ".";
 
+
+const SERVER_URL = import.meta.env?.VITE_IMAGE_URL || "http://localhost:5000";
+console.log("Using SERVER_URL:", SERVER_URL);
+
 /**
  * Fetches all geo-objects for a specific layer.
  * @param {string} layerId The ID of the layer.

@@ -1,36 +1,36 @@
+// middleware/upload.js
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 
+const DEST = 'uploads/geoobjects';
+
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
-        const dir = 'uploads/geoobjects';
-        // Create the directory if it does not exist
-        if (!fs.existsSync(dir)) {
-            fs.mkdirSync(dir, { recursive: true });
-        }
-        cb(null, dir);
+        if (!fs.existsSync(DEST)) fs.mkdirSync(DEST, { recursive: true });
+        cb(null, DEST);
     },
     filename: (req, file, cb) => {
-        // Create a unique filename
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+        const unique = Date.now() + '-' + Math.round(Math.random() * 1e9);
+        const ext = path.extname(file.originalname || '').toLowerCase();
+        cb(null, `images-${unique}${ext}`);
     }
 });
 
+// ใช้ MIME เป็นหลัก (รองรับ jpeg/png/webp/gif)
+const ALLOWED = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
 const fileFilter = (req, file, cb) => {
-    // Accept images only
-    if (!file.originalname.match(/\.(jpg|jpeg|png|gif)$/i)) {
-        req.fileValidationError = 'Only image files are allowed!';
-        return cb(new Error('Only image files are allowed!'), false);
+    if (!ALLOWED.has(file.mimetype)) {
+        req.fileValidationError = 'Only JPEG/PNG/WebP/GIF images are allowed!';
+        return cb(null, false);
     }
     cb(null, true);
 };
 
 const upload = multer({
-    storage: storage,
-    fileFilter: fileFilter,
-    limits: { fileSize: 1024 * 1024 * 5 } // 5MB file size limit
+    storage,
+    fileFilter,
+    limits: { fileSize: 5 * 1024 * 1024 } // 5MB
 });
 
 module.exports = upload;

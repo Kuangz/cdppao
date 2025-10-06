@@ -1,6 +1,32 @@
 const GeoObject = require('../models/GeoObject');
 const Layer = require('../models/Layer');
 const mongoose = require('mongoose');
+const fs = require('fs');
+const path = require('path');
+
+const UPLOAD_ROOT = 'uploads/geoobjects';
+const toPosix = (p = '') => String(p).replace(/\\/g, '/');
+
+const toStoredPath = (input = '') => {
+    const clean = toPosix(input).trim();
+    if (!clean) return '';
+    const base = path.posix.basename(clean); // ป้องกัน traversal
+    return `${UPLOAD_ROOT}/${base}`;
+};
+
+// ยืนยันว่าไฟล์อยู่ใต้ UPLOAD_ROOT ก่อนลบ (กัน path traversal)
+const isSafeUnderUploadRoot = (p) => {
+    const absRoot = path.resolve(UPLOAD_ROOT);
+    const abs = path.resolve(p);
+    return abs.startsWith(absRoot + path.sep) || abs === absRoot;
+};
+
+
+// parse JSON ปลอดภัย
+const safeJSON = (raw, fallback = null) => { try { return JSON.parse(raw); } catch { return fallback; } };
+
+// normalize array
+const ensureArray = (v) => Array.isArray(v) ? v : (v != null ? [v] : []);
 
 // Helper function to validate properties against a layer's field schema
 const validateProperties = (properties, fields) => {
@@ -40,50 +66,49 @@ const validateProperties = (properties, fields) => {
 // @route   POST /api/geoobjects
 // @access  Authenticated Users
 const createGeoObject = async (req, res) => {
-    // With multer, text fields are in req.body, files are in req.files
+    if (req.fileValidationError) {
+        return res.status(400).json({ error: req.fileValidationError });
+    }
+
     const { layerId } = req.body;
-    const geometry = JSON.parse(req.body.geometry);
-    const properties = JSON.parse(req.body.properties);
+    const geometry = safeJSON(req.body.geometry);
+    const properties = safeJSON(req.body.properties);
+
+    if (!geometry || !properties) {
+        return res.status(400).json({ error: 'Invalid JSON in geometry/properties.' });
+    }
 
     try {
         const layer = await Layer.findById(layerId);
-        if (!layer) {
-            return res.status(404).json({ error: 'Layer not found.' });
-        }
+        if (!layer) return res.status(404).json({ error: 'Layer not found.' });
 
-        // Validate geometry type
         if (layer.geometryType !== geometry.type) {
             throw new Error(`Invalid geometry type. Expected '${layer.geometryType}', but got '${geometry.type}'.`);
         }
 
-        // Validate properties against the layer's schema
         validateProperties(properties, layer.fields);
 
-        const imageUrls = req.files ? req.files.map(file => file.path) : [];
+        // ⬇️ เอาเฉพาะไฟล์ใหม่ที่อัปโหลด
+        const uploaded = (req.files || []).map(f => toStoredPath(f.path));
 
-        const initialState = {
-            properties,
-            geometry,
-            images: imageUrls
-        };
+        const initialState = { properties, geometry, images: uploaded };
 
         const geoObject = new GeoObject({
             layerId,
             geometry,
             properties,
-            images: imageUrls,
-            status: 'active', // Explicitly set status on creation
+            images: uploaded,
+            status: 'active',
             history: [{
                 action: 'created',
                 userId: req.user.id,
-                diff: { before: null, after: initialState }
+                diff: { before: null, after: initialState },
+                changedAt: new Date()
             }]
         });
 
-        const createdGeoObject = await geoObject.save();
-
-        res.status(201).json(createdGeoObject);
-
+        const created = await geoObject.save();
+        res.status(201).json(created);
     } catch (error) {
         res.status(400).json({ error: error.message });
     }
@@ -127,59 +152,105 @@ const getGeoObjectById = async (req, res) => {
     }
 };
 
-const fs = require('fs');
+
 
 // @desc    Update a geo-object
 // @route   PUT /api/geoobjects/:id
 // @access  Authenticated Users
 const updateGeoObject = async (req, res) => {
     try {
-        const geoObject = await GeoObject.findById(req.params.id);
-        if (!geoObject) {
-            return res.status(404).json({ error: 'Geo-object not found' });
+        if (req.fileValidationError) {
+            return res.status(400).json({ error: req.fileValidationError });
         }
+
+        const geoObject = await GeoObject.findById(req.params.id);
+        if (!geoObject) return res.status(404).json({ error: 'Geo-object not found' });
 
         const layer = await Layer.findById(geoObject.layerId);
-        if (!layer) {
-            return res.status(404).json({ error: 'Associated layer not found.' });
-        }
+        if (!layer) return res.status(404).json({ error: 'Associated layer not found.' });
 
-        // Keep track of the full old state for history diff
         const oldState = {
             properties: JSON.parse(JSON.stringify(geoObject.properties)),
             geometry: JSON.parse(JSON.stringify(geoObject.geometry)),
             images: [...geoObject.images]
         };
 
+        // properties
         if (req.body.properties) {
-            const properties = JSON.parse(req.body.properties);
-            validateProperties(properties, layer.fields);
-            geoObject.properties = properties;
+            const parsed = safeJSON(req.body.properties);
+            if (!parsed) throw new Error('Invalid JSON in properties.');
+            validateProperties(parsed, layer.fields);
+            geoObject.properties = parsed;
         }
 
+        // geometry
         if (req.body.geometry) {
-            const geometry = JSON.parse(req.body.geometry);
-            if (layer.geometryType !== geometry.type) {
-                throw new Error(`Invalid geometry type. Expected '${layer.geometryType}', but got '${geometry.type}'.`);
+            const parsed = safeJSON(req.body.geometry);
+            if (!parsed) throw new Error('Invalid JSON in geometry.');
+            if (layer.geometryType !== parsed.type) {
+                throw new Error(`Invalid geometry type. Expected '${layer.geometryType}', but got '${parsed.type}'.`);
             }
-            geoObject.geometry = geometry;
+            geoObject.geometry = parsed;
         }
 
-        // Handle image updates
-        const newImageUrls = req.files ? req.files.map(file => file.path) : [];
-        let existingImages = req.body.existingImages ? (Array.isArray(req.body.existingImages) ? req.body.existingImages : [req.body.existingImages]) : [];
+        // ===== รูปภาพ =====
+        const uploaded = (req.files || []).map(f => toStoredPath(f.path));
 
-        // Find images to delete
-        const imagesToDelete = oldState.images.filter(img => !existingImages.includes(img));
-        imagesToDelete.forEach(filePath => {
-            fs.unlink(filePath, (err) => {
-                if (err) console.error(`Failed to delete image: ${filePath}`, err);
+        // กรณี “ไม่ส่ง existingImages” และ “ไม่มีไฟล์ใหม่”
+        // → ไม่แตะ images เลย (ป้องกันรูปเดิมหาย)
+        const existingRaw = req.body.existingImages;
+        const hasExistingParam = Object.prototype.hasOwnProperty.call(req.body, 'existingImages');
+        let existing = [];
+
+        if (hasExistingParam) {
+            if (Array.isArray(existingRaw)) {
+                existing = existingRaw;
+            } else if (typeof existingRaw === 'string') {
+                const s = existingRaw.trim();
+                if (!s) {
+                    existing = []; // สัญญาณ "ไม่มีรูปเหลือ"
+                } else if (s.startsWith('[')) {
+                    // เผื่ออนาคตฟรอนต์ส่ง JSON มาทีเดียว
+                    try { existing = JSON.parse(s) || []; } catch { existing = [s]; }
+                } else {
+                    existing = [s];
+                }
+            }
+            // normalize -> uploads/geoobjects/<basename> และเก็บไว้เฉพาะที่เคยมีจริง
+            const oldSet = new Set(oldState.images.map(toPosix));
+            existing = existing
+                .map(toPosix)
+                .map(toStoredPath)
+                .filter(p => oldSet.has(p));
+        }
+
+        if (!hasExistingParam && uploaded.length === 0) {
+            // images คงเดิม
+        } else {
+            // มี existingImages หรือมีไฟล์ใหม่ → ประมวลผลใหม่ทั้งหมด
+            let existing = ensureArray(existingRaw)
+                .map(toPosix)
+                .map(toStoredPath);
+
+            // กันกรณีส่งค่าประหลาดมา: เก็บเฉพาะที่ “เคยอยู่จริง” ใน DB เดิม
+            const oldSet = new Set(oldState.images.map(toPosix));
+            existing = existing.filter(p => oldSet.has(p));
+
+            // final images = existing (ที่เหลือไว้) + uploaded (ไฟล์ใหม่)
+            const finalImages = Array.from(new Set([...(existing || []), ...uploaded]));
+
+            // ลบเฉพาะที่เคยมี แต่ไม่อยู่ใน final
+            const toDelete = oldState.images.filter(img => !finalImages.includes(img));
+            toDelete.forEach(rel => {
+                const abs = path.resolve(rel);
+                if (isSafeUnderUploadRoot(abs)) {
+                    fs.unlink(abs, err => { if (err) console.error(`Failed to delete image: ${rel}`, err); });
+                }
             });
-        });
 
-        geoObject.images = [...existingImages, ...newImageUrls];
+            geoObject.images = finalImages; // <<== ถ้า existing ว่างและไม่มี uploaded จะเหลือ []
+        }
 
-        // Create a comprehensive diff for the history log
         const newState = {
             properties: geoObject.properties,
             geometry: geoObject.geometry,
@@ -189,12 +260,12 @@ const updateGeoObject = async (req, res) => {
         geoObject.history.push({
             action: 'updated',
             userId: req.user.id,
-            diff: { before: oldState, after: newState }
+            diff: { before: oldState, after: newState },
+            changedAt: new Date()
         });
 
-        const updatedGeoObject = await geoObject.save();
-        res.json(updatedGeoObject);
-
+        const updated = await geoObject.save();
+        res.json(updated);
     } catch (error) {
         res.status(400).json({ error: error.message });
     }

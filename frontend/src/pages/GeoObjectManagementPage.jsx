@@ -1,19 +1,22 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { Link, useParams, useNavigate } from 'react-router-dom';
 import { Table, message, Spin, Button, Modal, Popconfirm, Space, Form, Typography, Breadcrumb } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import { getLayerById } from '../api/layer';
 import { getGeoObjectsByLayer, createGeoObject, updateGeoObject, deleteGeoObject } from '../api/geoObject';
 import GeoObjectForm from '../components/GeoObjectForm';
+import { splitImages, toUploadFileList } from '../utils/imageHelpers';
 
 const { Title } = Typography;
 
 const GeoObjectManagementPage = () => {
     const { layerId } = useParams();
     const navigate = useNavigate();
+
     const [layer, setLayer] = useState(null);
     const [objects, setObjects] = useState([]);
     const [loading, setLoading] = useState(false);
+
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [editingObject, setEditingObject] = useState(null);
     const [form] = Form.useForm();
@@ -23,8 +26,9 @@ const GeoObjectManagementPage = () => {
         try {
             const layerRes = await getLayerById(layerId);
             setLayer(layerRes.data);
+
             const objectsRes = await getGeoObjectsByLayer(layerId);
-            setObjects(objectsRes.data);
+            setObjects(objectsRes.data || []);
         } catch (error) {
             message.error('Failed to fetch layer details or objects.');
             navigate('/admin/layers');
@@ -44,7 +48,8 @@ const GeoObjectManagementPage = () => {
             form.setFieldsValue({
                 ...object,
                 properties: object.properties || {},
-            });
+                images: toUploadFileList(object.images || []), // preload สำหรับแก้ไข
+            })
         }
         setIsModalVisible(true);
     };
@@ -52,9 +57,15 @@ const GeoObjectManagementPage = () => {
     const handleCancel = () => {
         setIsModalVisible(false);
         setEditingObject(null);
+        form.resetFields();
     };
 
     const handleFinish = async (values) => {
+        if (!layer?._id) {
+            message.error('Layer not ready.');
+            return;
+        }
+
         setLoading(true);
         try {
             const formData = new FormData();
@@ -62,14 +73,21 @@ const GeoObjectManagementPage = () => {
             formData.append('geometry', JSON.stringify(values.geometry));
             formData.append('properties', JSON.stringify(values.properties || {}));
 
-            if (values.images && values.images.length > 0) {
-                 values.images.forEach(file => {
-                    if (file.originFileObj) {
-                        formData.append('images', file.originFileObj);
-                    } else if (file.url) {
-                        formData.append('existingImages', file.url);
-                    }
-                });
+            console.log('Submitting values:', values.images);
+
+
+            const { existing, fresh } = splitImages(values.images || []);
+            fresh.forEach((file) => formData.append('images', file));
+
+            if (editingObject) {
+                if (existing.length > 0) {
+                    existing.forEach(p => formData.append('existingImages', p));
+                } else {
+                    // <<== สัญญาณชัดเจนว่า "ไม่มีรูปเหลือ"
+                    formData.append('existingImages', '');
+                }
+            } else {
+                // create: ไม่ส่ง existingImages
             }
 
             if (editingObject) {
@@ -79,10 +97,11 @@ const GeoObjectManagementPage = () => {
                 await createGeoObject(formData);
                 message.success('Object created successfully!');
             }
-            fetchLayerDetails(); // Refetch everything
+
+            await fetchLayerDetails();
             handleCancel();
         } catch (error) {
-            const errorMessage = error.response?.data?.error || 'An error occurred.';
+            const errorMessage = error?.response?.data?.error || 'An error occurred.';
             message.error(errorMessage);
         } finally {
             setLoading(false);
@@ -94,7 +113,7 @@ const GeoObjectManagementPage = () => {
         try {
             await deleteGeoObject(id);
             message.success('Object deleted successfully!');
-            fetchLayerDetails(); // Refetch everything
+            await fetchLayerDetails();
         } catch (error) {
             message.error('Failed to delete object.');
         } finally {
@@ -102,98 +121,101 @@ const GeoObjectManagementPage = () => {
         }
     };
 
-    const generateColumns = () => {
+    const columns = useMemo(() => {
         if (!layer) return [];
 
         const importantFields = layer.displaySettings?.importantFields || [];
         const layerFields = layer.fields || [];
 
-        const columns = importantFields.map(fieldName => {
-            const field = layerFields.find(f => f.name === fieldName);
+        const cols = importantFields.map((fieldName) => {
+            const field = layerFields.find((f) => f.name === fieldName);
             return {
                 title: field ? field.label : fieldName,
                 dataIndex: ['properties', fieldName],
                 key: fieldName,
-                render: (text) => String(text),
+                render: (val) => (val === null || val === undefined ? '-' : String(val)),
             };
         });
 
-        if (columns.length === 0) {
-             columns.push({ title: 'ID', dataIndex: '_id', key: '_id' });
+        if (cols.length === 0) {
+            cols.push({ title: 'ID', dataIndex: '_id', key: '_id' });
         }
 
-        columns.push({
+        cols.push({
             title: 'Actions',
             key: 'actions',
+            width: 140,
             render: (_, record) => (
                 <Space>
-                    <Button icon={<EditOutlined />} onClick={() => handleShowModal(record)} />
+                    <Button
+                        size="small"
+                        icon={<EditOutlined />}
+                        onClick={() => handleShowModal(record)}
+                        aria-label="Edit object"
+                    />
                     <Popconfirm
                         title="Are you sure you want to delete this object?"
                         onConfirm={() => handleDelete(record._id)}
                         okText="Yes"
                         cancelText="No"
                     >
-                        <Button icon={<DeleteOutlined />} danger />
+                        <Button size="small" icon={<DeleteOutlined />} danger aria-label="Delete object" />
                     </Popconfirm>
                 </Space>
             ),
         });
 
-        return columns;
-    };
+        return cols;
+    }, [layer]);
 
     if (!layer) {
-        return <Spin size="large" style={{ display: 'block', marginTop: '50px' }} />;
+        return <Spin size="large" style={{ display: 'block', marginTop: 50 }} />;
     }
 
     return (
-        <div style={{ padding: '24px' }}>
-            <Breadcrumb style={{ marginBottom: '16px' }}>
-                <Breadcrumb.Item><a href="/admin">Admin Panel</a></Breadcrumb.Item>
-                <Breadcrumb.Item><a href="/admin/layers">Layer Management</a></Breadcrumb.Item>
+        <div style={{ padding: 8 }}>
+            <Breadcrumb style={{ marginBottom: 16 }}>
+                <Breadcrumb.Item>
+                    <Link to="/admin">Admin Panel</Link>
+                </Breadcrumb.Item>
+                <Breadcrumb.Item>
+                    <Link to="/admin/layers">Layer Management</Link>
+                </Breadcrumb.Item>
                 <Breadcrumb.Item>จัดการข้อมูล: {layer.name}</Breadcrumb.Item>
             </Breadcrumb>
 
             <Title level={2}>จัดการข้อมูล: {layer.name}</Title>
 
             <Space style={{ marginBottom: 16 }}>
-                <Button
-                    type="primary"
-                    icon={<PlusOutlined />}
-                    onClick={() => handleShowModal()}
-                >
+                <Button type="primary" icon={<PlusOutlined />} onClick={() => handleShowModal()}>
                     Create Object
                 </Button>
             </Space>
 
             <Table
-                columns={generateColumns()}
+                columns={columns}
                 dataSource={objects}
                 loading={loading}
                 rowKey="_id"
                 bordered
+                pagination={{ pageSize: 10, showSizeChanger: true }}
+                scroll={{ x: true }}
             />
 
             <Modal
-                title={editingObject ? `Edit Object in ${layer.name}`: `Create New Object in ${layer.name}`}
-                visible={isModalVisible}
+                title={editingObject ? `แก้ไขข้อมูลของ ${layer.name}` : `สร้างข้อมูลใหม่ใน ${layer.name}`}
+                open={isModalVisible}               // ✅ Antd v5
                 onCancel={handleCancel}
                 width={800}
-                destroyOnClose
-                footer={[
-                    <Button key="back" onClick={handleCancel}>
-                        Cancel
-                    </Button>,
-                    <Button key="submit" type="primary" loading={loading} onClick={() => form.submit()}>
-                        Submit
-                    </Button>,
-                ]}
+                destroyOnHidden                     // ✅ Antd v5
+                maskClosable={false}
+                footer={null}
             >
                 <GeoObjectForm
                     form={form}
                     layer={layer}
                     onFinish={handleFinish}
+                    onCancel={handleCancel}
                     initialValues={editingObject}
                 />
             </Modal>
