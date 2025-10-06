@@ -1,0 +1,17 @@
+# global
+.git
+.gitignore
+Dockerfile
+nginx.Dockerfile
+docker-compose.yml
+
+# backend
+backend/node_modules
+backend/.env
+backend/.env.*
+backend/dist
+
+# frontend
+frontend/node_modules
+frontend/dist
+frontend/build
