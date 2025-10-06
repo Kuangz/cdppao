@@ -5,7 +5,7 @@ services:
       context: .
       dockerfile: nginx.Dockerfile
     ports:
-      - "6066:80"
+      - "6088:80"
     volumes:
       - ./nginx/ssl:/etc/nginx/ssl:ro
       - uploads:/usr/src/app/uploads:ro

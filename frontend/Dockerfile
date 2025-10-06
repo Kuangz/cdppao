@@ -20,7 +20,7 @@ RUN apk add --no-cache libc6-compat python3 make g++
 
 COPY package.json package-lock.json ./
 # ใช้ devDependencies ด้วยเพราะเป็น build-time
-RUN npm ci
+RUN npm install
 
 COPY . .
 # กัน OOM ตอน build
