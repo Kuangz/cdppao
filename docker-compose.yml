@@ -21,7 +21,7 @@ services:
       MONGO_INITDB_ROOT_USERNAME: admin
       MONGO_INITDB_ROOT_PASSWORD: passwordcdppao2025naja
     ports:
-      - "127.0.0.1:27011:27017"
+      - "27022:27017"
     volumes:
       - mongo_data:/data/db
     networks:
