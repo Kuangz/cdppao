@@ -207,14 +207,14 @@ const Dashboard = () => {
 
                     {panelMode === 'details' && (
                         <>
-                            <Button
+                            {/* <Button
                                 type="primary"
                                 icon={<PlusOutlined />}
                                 onClick={() => { setPanelMode('create'); setPanelVisible(true); }}
                                 style={{ width: '100%', marginBottom: 16 }}
                             >
                                 Create New Data
-                            </Button>
+                            </Button> */}
                             <LayerControl
                                 layers={layers}
                                 visibleLayerIds={visibleLayerIds}

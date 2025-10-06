@@ -132,7 +132,7 @@ const GeoObjectForm = ({ form, layers, layer, onFinish, initialValues, onCancel 
                 label="Location"
                 rules={[{ required: true, message: 'Please select a location on the map.' }]}
             >
-                <GeoJSONLocationPicker geometryType={layer.geometryType} isEditMode={isEditMode} />
+                <GeoJSONLocationPicker geometryType={layer?.geometryType} isEditMode={isEditMode} />
             </Form.Item>
 
             <Form.Item
@@ -155,11 +155,14 @@ const GeoObjectForm = ({ form, layers, layer, onFinish, initialValues, onCancel 
                 </Upload>
             </Form.Item>
 
-            {layer.fields.map(field => renderField(field))}
+            {layer?.fields.map(field => renderField(field))}
 
             <Form.Item>
                 <Button type="primary" htmlType="submit">
-                    Submit
+                    บันทึก
+                </Button>
+                <Button style={{ marginLeft: 8 }} onClick={onCancel}>
+                    ยกเลิก
                 </Button>
             </Form.Item>
         </Form>
