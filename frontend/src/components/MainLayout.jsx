@@ -1,6 +1,6 @@
 import React from "react";
 import { Layout, Menu, Button, Dropdown, Space } from "antd";
-import { DeleteOutlined, UserOutlined, LogoutOutlined, SettingOutlined, AppstoreAddOutlined } from "@ant-design/icons";
+import { EnvironmentTwoTone, UserOutlined, LogoutOutlined, SettingOutlined, AppstoreAddOutlined } from "@ant-design/icons";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 const { Header, Content, Footer } = Layout;
@@ -13,7 +13,7 @@ const MainLayout = ({ children }) => {
     const menuItems = [
         {
             key: "/dashboard",
-            icon: <DeleteOutlined />,
+            icon: <EnvironmentTwoTone />,
             label: <Link to="/dashboard">ระบบฐานข้อมูล City Data Platform</Link>,
         },
     ];
