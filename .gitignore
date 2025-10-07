@@ -54,3 +54,4 @@ backend/package-lock.json
 
 frontend/package-lock.json
 frontend/node_modules/
+backend/uploads/
