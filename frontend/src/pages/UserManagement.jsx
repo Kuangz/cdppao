@@ -10,7 +10,8 @@ import {
     Card,
     Space,
     Tag,
-    Typography
+    Typography,
+    Grid
 } from "antd";
 import {
     PlusOutlined,
@@ -302,21 +303,24 @@ export default function UserManagement() {
 
 // --- Action buttons separated for clarity ---
 function ActionButtons({ record, user, onEdit, onResetPassword, onDelete }) {
+    const screens = Grid.useBreakpoint();
+    const isMobile = !screens.md;
+
     return (
-        <Space>
+        <Space direction={isMobile ? 'vertical' : 'horizontal'}>
             <Button
                 icon={<EditOutlined />}
                 size="small"
                 onClick={onEdit}
             >
-                แก้ไข
+                {!isMobile && 'แก้ไข'}
             </Button>
             <Button
                 icon={<ReloadOutlined />}
                 size="small"
                 onClick={() => onResetPassword(record._id)}
             >
-                รีเซ็ตรหัสผ่าน
+                {!isMobile && 'รีเซ็ตรหัสผ่าน'}
             </Button>
             <Popconfirm
                 title="ยืนยันลบผู้ใช้นี้?"
@@ -331,7 +335,7 @@ function ActionButtons({ record, user, onEdit, onResetPassword, onDelete }) {
                     danger
                     disabled={record.username === user.username}
                 >
-                    ลบ
+                    {!isMobile && 'ลบ'}
                 </Button>
             </Popconfirm>
         </Space>

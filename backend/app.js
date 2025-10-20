@@ -56,8 +56,10 @@ app.use('/api/garbage-bins', garbageBinRoutes);
 const geoObjectRoutes = require('./routes/geoobjects.js');
 
 const layerUploadRoutes = require('./routes/layerUpload.js');
+const roleRoutes = require('./routes/roleRoutes.js');
 
 app.use('/api/users', userRoutes);
+app.use('/api/roles', roleRoutes);
 app.use('/api/layers/upload', layerUploadRoutes);
 app.use('/api/layers', layerRoutes);
 app.use('/api/geoobjects', geoObjectRoutes);

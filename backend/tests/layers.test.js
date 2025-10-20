@@ -4,25 +4,50 @@ const mongoose = require('mongoose');
 const jwt = 'jsonwebtoken'; // Not importing, just a placeholder for mock
 const Layer = require('../models/Layer');
 const layerRoutes = require('../routes/layers');
-const authMiddleware = require('../middleware/auth');
-const isAdminMiddleware = require('../middleware/isAdmin');
+const { authenticate, hasPermission } = require('../middleware/auth');
 
-// Mocking middleware
-jest.mock('../middleware/auth', () => jest.fn((req, res, next) => {
-    // default to a regular user
-    req.user = { id: 'userId', role: 'user' };
-    if (req.headers.authorization === 'Bearer admin_token') {
-        req.user = { id: 'adminId', role: 'admin' };
-    }
-    next();
-}));
-
-jest.mock('../middleware/isAdmin', () => jest.fn((req, res, next) => {
-    if (req.user && req.user.role === 'admin') {
+// Mocking the new middleware
+const mockLayer1Id = new mongoose.Types.ObjectId();
+jest.mock('../middleware/auth', () => ({
+    authenticate: jest.fn((req, res, next) => {
+        // Mock user population based on token
+        if (req.headers.authorization === 'Bearer admin_token') {
+            req.user = {
+                id: 'adminId',
+                role: {
+                    name: 'admin',
+                    permissions: [] // Admin doesn't need specific permissions
+                }
+            };
+        } else if (req.headers.authorization === 'Bearer user_token') {
+            req.user = {
+                id: 'userId',
+                role: {
+                    name: 'user',
+                    permissions: [
+                        // Give user 'view' permission on a specific layer for testing GET
+                        { layer: { _id: mockLayer1Id }, actions: ['view'] },
+                    ]
+                }
+            };
+        }
         next();
-    } else {
-        res.status(403).json({ error: "Forbidden: Admins only" });
-    }
+    }),
+    hasPermission: jest.fn((action, resourceType) => (req, res, next) => {
+        // Mock permission check
+        const { user } = req;
+        if (user && user.role.name === 'admin') {
+            return next();
+        }
+        // Simplified check for tests
+        if (action === 'view' && resourceType === 'Layer' && user.role.permissions.some(p => p.actions.includes('view'))) {
+            return next();
+        }
+        if (action === 'create' || action === 'delete' || action === 'edit') {
+            return res.status(403).json({ error: 'Forbidden' });
+        }
+        next();
+    }),
 }));
 
 const app = express();
@@ -71,13 +96,27 @@ describe('Layer API Endpoints', () => {
     });
 
     describe('GET /api/layers', () => {
-        it('should return all layers for any authenticated user', async () => {
+        it('should return only layers the user has permission to view', async () => {
+            await Layer.create({ _id: mockLayer1Id, name: 'Layer 1', geometryType: 'Point' });
+            await Layer.create({ _id: new mongoose.Types.ObjectId(), name: 'Layer 2', geometryType: 'Polygon' });
+
+            const res = await request(app)
+                .get('/api/layers')
+                .set('Authorization', 'Bearer user_token');
+
+            expect(res.statusCode).toEqual(200);
+            expect(res.body).toBeInstanceOf(Array);
+            expect(res.body.length).toBe(1);
+            expect(res.body[0].name).toBe('Layer 1');
+        });
+
+        it('should return all layers for an admin user', async () => {
             await Layer.create({ name: 'Layer 1', geometryType: 'Point' });
             await Layer.create({ name: 'Layer 2', geometryType: 'Polygon' });
 
             const res = await request(app)
                 .get('/api/layers')
-                .set('Authorization', 'Bearer user_token');
+                .set('Authorization', 'Bearer admin_token');
 
             expect(res.statusCode).toEqual(200);
             expect(res.body).toBeInstanceOf(Array);

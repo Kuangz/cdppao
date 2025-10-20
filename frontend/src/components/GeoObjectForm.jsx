@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Form, Input, InputNumber, Switch, DatePicker, Button, Upload, Select, message } from 'antd';
+import { Form, Input, InputNumber, Switch, DatePicker, Button, Upload, Select, message, Row, Col } from 'antd';
 import { UploadOutlined } from '@ant-design/icons';
 import LocationPicker from './LocationPicker';
 import { publicUrlFromPath, toUploadFileList, validateImageBeforeUpload } from '../utils/imageHelpers';
@@ -31,11 +31,31 @@ const GeoJSONLocationPicker = ({ value, onChange, geometryType, isEditMode }) =>
     }
 
     return (
-        <LocationPicker
-            value={toPickerFormat(value)}
-            onChange={handlePickerChange}
-            isEditMode={isEditMode}
-        />
+        <div>
+            <LocationPicker
+                value={toPickerFormat(value)}
+                onChange={handlePickerChange}
+                isEditMode={isEditMode}
+            />
+            <Row gutter={8} style={{ marginTop: 8 }}>
+                <Col span={12}>
+                    <InputNumber
+                        placeholder="Latitude"
+                        value={value?.coordinates[1]}
+                        onChange={(lat) => handlePickerChange({ lat, lng: value?.coordinates[0] })}
+                        style={{ width: '100%' }}
+                    />
+                </Col>
+                <Col span={12}>
+                    <InputNumber
+                        placeholder="Longitude"
+                        value={value?.coordinates[0]}
+                        onChange={(lng) => handlePickerChange({ lat: value?.coordinates[1], lng })}
+                        style={{ width: '100%' }}
+                    />
+                </Col>
+            </Row>
+        </div>
     );
 };
 

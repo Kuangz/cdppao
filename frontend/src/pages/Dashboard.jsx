@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Row, Col, Card, Spin, message, Button, Space, Image, Form } from 'antd';
+import { Row, Col, Card, Spin, message, Button, Space, Image, Form, Drawer, Grid } from 'antd';
 import { MenuFoldOutlined, MenuUnfoldOutlined, PlusOutlined } from '@ant-design/icons';
 
 import { useNavigate } from 'react-router-dom';
@@ -21,6 +21,8 @@ const Dashboard = () => {
     const [isPanelVisible, setPanelVisible] = useState(true);
     const [panelMode, setPanelMode] = useState('details'); // 'details', 'create', 'edit'
     const [form] = Form.useForm();
+    const screens = Grid.useBreakpoint();
+    const isMobile = !screens.md;
 
     useEffect(() => {
         if (panelMode === 'edit' && selectedObject) {
@@ -129,6 +131,53 @@ const Dashboard = () => {
         setVisibleLayerIds(newVisibleIds);
     };
 
+    const renderPanelContent = () => {
+        return (
+            <>
+                {panelMode === 'details' && (
+                    <>
+                        <LayerControl
+                            layers={layers}
+                            visibleLayerIds={visibleLayerIds}
+                            onVisibilityChange={handleVisibilityChange}
+                            onCreateObject={(layerId) => {
+                                const layer = layers.find(l => l._id === layerId);
+                                if (layer) {
+                                    setSelectedObject({ layerId: layer._id });
+                                    setPanelMode('create');
+                                    setPanelVisible(true);
+                                }
+                            }}
+                        />
+                        <div id="detail-section" style={{ marginTop: '16px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                                <h4 style={{ margin: 0 }}>รายละเอียด</h4>
+                                {selectedObject && panelMode === 'details' && (
+                                    <Button size="small" onClick={() => setPanelMode('edit')}>แก้ไข</Button>
+                                )}
+                            </div>
+                            <ObjectDetailCard
+                                object={selectedObject}
+                                layer={layers.find(l => l._id === selectedObject?.layerId)}
+                            />
+                        </div>
+                    </>
+                )}
+                {(panelMode === 'create' || panelMode === 'edit') && (
+                    <GeoObjectForm
+                        form={form}
+                        key={selectedObject?._id || 'create'}
+                        initialValues={panelMode === 'edit' ? selectedObject : null}
+                        layer={panelMode === 'edit' ? layers.find(l => l._id === selectedObject.layerId) : null}
+                        layers={layers}
+                        onFinish={handleFormSubmit}
+                        onCancel={() => setPanelMode('details')}
+                    />
+                )}
+            </>
+        );
+    };
+
     // Assuming a header height of ~64px. This can be adjusted.
     const mapHeight = 'calc(100vh - 80px)';
     const centerStyle = { textAlign: "center", padding: 80, height: mapHeight, display: 'flex', justifyContent: 'center', alignItems: 'center' };
@@ -185,70 +234,40 @@ const Dashboard = () => {
                 </Card>
             </div>
 
-            {/* Controls & Details Panel */}
-            <div style={{
-                width: isPanelVisible ? '350px' : '0px',
-                transition: 'width 0.3s ease',
-                overflow: 'hidden',
-                height: '100%',
-                backgroundColor: '#f0f2f5'
-            }}>
-                <Card
+            {/* Responsive Controls & Details Panel */}
+            {isMobile ? (
+                <Drawer
                     title="Controls & Details"
-                    style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
-                    styles={{
-                        body: {
-                            flex: 1,
-                            overflowY: 'auto',
-                            padding: '16px',
-                        },
-                    }}
+                    placement="bottom"
+                    onClose={() => setPanelVisible(false)}
+                    visible={isPanelVisible}
+                    height="60%"
                 >
-
-                    {panelMode === 'details' && (
-                        <>
-                            {/* <Button
-                                type="primary"
-                                icon={<PlusOutlined />}
-                                onClick={() => { setPanelMode('create'); setPanelVisible(true); }}
-                                style={{ width: '100%', marginBottom: 16 }}
-                            >
-                                Create New Data
-                            </Button> */}
-                            <LayerControl
-                                layers={layers}
-                                visibleLayerIds={visibleLayerIds}
-                                onVisibilityChange={handleVisibilityChange}
-                            />
-                            <div id="detail-section" style={{ marginTop: '16px' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                                    <h4 style={{ margin: 0 }}>รายละเอียด</h4>
-                                    {selectedObject && panelMode === 'details' && (
-                                        <Button size="small" onClick={() => setPanelMode('edit')}>แก้ไข</Button>
-                                    )}
-                                </div>
-
-                                <ObjectDetailCard
-                                    object={selectedObject}
-                                    layer={layers.find(l => l._id === selectedObject?.layerId)}
-                                />
-                            </div>
-                        </>
-                    )}
-
-                    {(panelMode === 'create' || panelMode === 'edit') && (
-                        <GeoObjectForm
-                            form={form}
-                            key={selectedObject?._id || 'create'} // Re-mount form on new selection
-                            initialValues={panelMode === 'edit' ? selectedObject : null}
-                            layer={panelMode === 'edit' ? layers.find(l => l._id === selectedObject.layerId) : null}
-                            layers={layers} // Pass all layers for the 'create' mode selector
-                            onFinish={handleFormSubmit}
-                            onCancel={() => setPanelMode('details')}
-                        />
-                    )}
-                </Card>
-            </div>
+                    {renderPanelContent()}
+                </Drawer>
+            ) : (
+                <div style={{
+                    width: isPanelVisible ? '350px' : '0px',
+                    transition: 'width 0.3s ease',
+                    overflow: 'hidden',
+                    height: '100%',
+                    backgroundColor: '#f0f2f5'
+                }}>
+                    <Card
+                        title="Controls & Details"
+                        style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
+                        styles={{
+                            body: {
+                                flex: 1,
+                                overflowY: 'auto',
+                                padding: '16px',
+                            },
+                        }}
+                    >
+                        {renderPanelContent()}
+                    </Card>
+                </div>
+            )}
         </div>
     );
 };

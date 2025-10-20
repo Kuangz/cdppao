@@ -29,7 +29,14 @@ exports.register = async (req, res) => {
 
 exports.login = async (req, res) => {
     const { username, password } = req.body;
-    const user = await User.findOne({ username });
+    //  Mongoose populate() is used to replace the specified path in the document of one collection with the actual document from the other collection.
+    const user = await User.findOne({ username }).populate({
+        path: 'role',
+        populate: {
+            path: 'permissions.layer',
+            select: 'name' // Select the fields you need from the Layer model
+        }
+    });
     if (!user) return res.status(401).json({ error: 'ไม่พบชื่อผู้ใช้งาน' });
 
     const isMatch = await user.comparePassword(password);

@@ -40,6 +40,12 @@ const MainLayout = ({ children }) => {
                 hidden: user?.role !== "admin"
             },
             {
+                key: "role-management",
+                icon: <SettingOutlined />,
+                label: <Link to="/admin/roles">จัดการสิทธิ์</Link>,
+                hidden: user?.role !== "admin"
+            },
+            {
                 type: "divider"
             },
 

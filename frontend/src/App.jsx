@@ -17,6 +17,7 @@ import BinPointEditPage from "./pages/BinPointEditPage";
 import MainLayout from "./components/MainLayout";
 import ChangePasswordForm from "./components/ChangePasswordForm";
 import UserManagement from "./pages/UserManagement";
+import RoleManagementPage from "./pages/RoleManagementPage";
 
 function App() {
   return (
@@ -102,6 +103,15 @@ function App() {
           element={
             <AdminRoute>
               <LayerManagement />
+            </AdminRoute>
+          }
+        />
+
+        <Route
+          path="/admin/roles"
+          element={
+            <AdminRoute>
+              <RoleManagementPage />
             </AdminRoute>
           }
         />

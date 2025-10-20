@@ -8,19 +8,22 @@ const {
     deleteGeoObject
 } = require('../controllers/geoObjectController');
 
-const auth = require('../middleware/auth');
+const { authenticate, hasPermission } = require('../middleware/auth');
+const { checkGeoObjectPermission } = require('../middleware/geoObjectPermission');
 const upload = require('../middleware/upload');
 
-// All routes here are protected and require a user to be authenticated.
-router.use(auth);
+// Authenticate all requests
+router.use(authenticate);
 
-router.route('/')
-    .post(upload.array('images', 10), createGeoObject) // Handle up to 10 image uploads
-    .get(getGeoObjectsByLayer);
+// For creating, the layerId is in the body, checked by middleware
+router.post('/', upload.array('images', 10), checkGeoObjectPermission('create'), createGeoObject);
 
-router.route('/:id')
-    .get(getGeoObjectById)
-    .put(upload.array('images', 10), updateGeoObject) // Also handle uploads on update
-    .delete(deleteGeoObject);
+// For getting objects by layer, the layerId is in the query, checked by middleware
+router.get('/', checkGeoObjectPermission('view'), getGeoObjectsByLayer);
+
+// For specific object operations, the permission is checked based on the object's layer
+router.get('/:id', checkGeoObjectPermission('view'), getGeoObjectById);
+router.put('/:id', upload.array('images', 10), checkGeoObjectPermission('edit'), updateGeoObject);
+router.delete('/:id', checkGeoObjectPermission('delete'), deleteGeoObject);
 
 module.exports = router;

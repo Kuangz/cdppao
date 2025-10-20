@@ -30,10 +30,22 @@ const createLayer = async (req, res) => {
 
 // @desc    Get all layers
 // @route   GET /api/layers
-// @access  Public
+// @access  Private (permissions-based)
 const getAllLayers = async (req, res) => {
     try {
-        const layers = await Layer.find({});
+        let layers;
+        // If user is admin, fetch all layers.
+        if (req.user.role && req.user.role.name === 'admin') {
+            layers = await Layer.find({});
+        } else {
+            // Otherwise, fetch only layers the user has 'view' permission for.
+            const userPermissions = req.user.role ? req.user.role.permissions : [];
+            const layerIdsWithViewPermission = userPermissions
+                .filter(p => p.actions.includes('view'))
+                .map(p => p.layer._id);
+
+            layers = await Layer.find({ '_id': { $in: layerIdsWithViewPermission } });
+        }
         res.json(layers);
     } catch (error) {
         res.status(500).json({ error: 'Server error' });

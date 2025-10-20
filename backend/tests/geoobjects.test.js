@@ -5,18 +5,63 @@ const Layer = require('../models/Layer');
 const GeoObject = require('../models/GeoObject');
 const geoObjectRoutes = require('../routes/geoobjects');
 
-// Mock middleware - all users are authenticated regular users
-jest.mock('../middleware/auth', () => {
-    const mongoose = require('mongoose'); // require inside the mock factory
-    return jest.fn((req, res, next) => {
-        req.user = { id: new mongoose.Types.ObjectId().toHexString(), role: 'user' };
+const { authenticate, hasPermission } = require('../middleware/auth');
+const { checkGeoObjectPermission } = require('../middleware/geoObjectPermission');
+
+// Mocking the new middleware
+const mockTestLayerId = new mongoose.Types.ObjectId();
+jest.mock('../middleware/auth', () => ({
+    authenticate: jest.fn((req, res, next) => {
+        req.user = {
+            id: 'userId',
+            role: {
+                name: 'user',
+                permissions: [
+                    { layer: { _id: mockTestLayerId }, actions: ['view', 'create', 'edit', 'delete'] },
+                ]
+            }
+        };
         next();
-    });
-});
+    }),
+    hasPermission: jest.fn((action, resourceType) => (req, res, next) => {
+        next();
+    }),
+}));
+
+jest.mock('../middleware/geoObjectPermission', () => ({
+    checkGeoObjectPermission: jest.fn((action) => async (req, res, next) => {
+        const GeoObject = require('../models/GeoObject'); // Require inside mock
+        const { user } = req;
+        if (!user || !user.role) return res.status(403).json({ error: 'Forbidden' });
+        if (user.role.name === 'admin') return next();
+
+        let layerId;
+        if (req.method === 'POST') {
+            layerId = req.body.layerId;
+        } else if (req.query.layerId) {
+            layerId = req.query.layerId;
+        } else if (req.params.id) {
+            const geoObject = await GeoObject.findById(req.params.id);
+            if (geoObject) {
+                layerId = geoObject.layerId.toString();
+            }
+        }
+
+        if (!layerId) return res.status(400).json({ error: 'Layer ID missing' });
+
+        const hasPerm = user.role.permissions.some(p => p.layer._id.toString() === layerId && p.actions.includes(action));
+
+        if (hasPerm) {
+            next();
+        } else {
+            res.status(403).json({ error: 'Forbidden' });
+        }
+    }),
+}));
+
 
 const app = express();
 app.use(express.json());
-// Since the controller now handles multipart/form-data, we need to wire up the router
 app.use('/api/geoobjects', geoObjectRoutes);
 
 describe('GeoObject API Endpoints with History and Soft Delete', () => {
@@ -29,11 +74,11 @@ describe('GeoObject API Endpoints with History and Soft Delete', () => {
     beforeEach(async () => {
         // Create a sample layer before each test
         testLayer = await Layer.create({
+            _id: mockTestLayerId,
             name: 'Test Point Layer',
             geometryType: 'Point',
             fields: [
                 { name: 'name', label: 'Name', type: 'String', required: true },
-                { name: 'rating', label: 'Rating', type: 'Number', required: false },
             ]
         });
     });
@@ -50,7 +95,7 @@ describe('GeoObject API Endpoints with History and Soft Delete', () => {
     describe('POST /api/geoobjects', () => {
         it('should create a new geo-object with active status and creation history', async () => {
             const geometry = { type: 'Point', coordinates: [100, 10] };
-            const properties = { name: 'Valid Point', rating: 5 };
+            const properties = { name: 'Valid Point' };
 
             const res = await request(app)
                 .post('/api/geoobjects')
@@ -97,7 +142,7 @@ describe('GeoObject API Endpoints with History and Soft Delete', () => {
         });
 
         it('should update an object and record history', async () => {
-            const updatedProperties = { name: 'Updated Name', rating: 10 };
+            const updatedProperties = { name: 'Updated Name' };
             const res = await request(app)
                 .put(`/api/geoobjects/${existingObject._id}`)
                 .field('properties', JSON.stringify(updatedProperties));

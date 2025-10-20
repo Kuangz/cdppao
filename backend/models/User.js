@@ -6,9 +6,8 @@ const UserSchema = new mongoose.Schema({
     password: { type: String, required: true },
     displayName: { type: String, required: true }, // <-- เพิ่ม
     role: {
-        type: String,
-        enum: ['user', 'admin'],
-        default: 'user',   // กำหนด default เป็น user
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Role'
     }
 });
 
