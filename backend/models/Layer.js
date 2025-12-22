@@ -65,7 +65,7 @@ const LayerSchema = new mongoose.Schema({
 
     color: {
         type: String,
-        default: '#ff0000' // Default to red
+        default: '#000000ff' // Default to black
     },
     icon: {
         type: String,

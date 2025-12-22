@@ -1,69 +1,142 @@
+// middleware/auth.js
+'use strict';
+
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
-// Middleware to verify JWT and attach user with populated role
-const authenticate = async (req, res, next) => {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return res.status(401).json({ error: 'No token provided or malformed token' });
-    }
+// read token from Authorization: Bearer or cookie
+const getTokenFromRequest = (req) => {
+    const authHeader = req.headers?.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) return authHeader.slice(7);
+    if (req.cookies && req.cookies.accessToken) return req.cookies.accessToken;
+    return null;
+};
 
-    const token = authHeader.split(' ')[1];
+const jwtVerifyOpts = {
+    algorithms: ['HS256'],
+    clockTolerance: 5,
+};
+
+// build quick index for permissions
+const buildPermissionIndex = (role) => {
+    const byLayerId = new Map();
+    const allowedLayerIds = [];
+    for (const p of role?.permissions || []) {
+        const layerId =
+            p?.layer && typeof p.layer === 'object'
+                ? String(p.layer._id || p.layer.id)
+                : p?.layer
+                    ? String(p.layer)
+                    : null;
+        if (!layerId) continue;
+        byLayerId.set(layerId, new Set(p.actions || []));
+        allowedLayerIds.push(layerId);
+    }
+    const globalActions = new Set(role?.globalActions || []);
+    return { byLayerId, allowedLayerIds, globalActions };
+};
+
+const fs = require('fs');
+const path = require('path');
+const logPath = path.join(__dirname, '../auth-debug.log');
+
+// authenticate + attach user, role, perm index
+const authenticate = async (req, res, next) => {
+    // Prefer header accessToken; cookie refresh is handled in controller
+    const token = getTokenFromRequest(req);
+    if (!token) return res.status(401).json({ error: 'NO_TOKEN' });
+
     try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        // Fetch user and populate the role information
+        const decoded = jwt.verify(token, process.env.JWT_SECRET, jwtVerifyOpts);
+        fs.appendFileSync(logPath, `[${new Date().toISOString()}] AUTH: userId=${decoded.userId} token=${token.slice(-10)}\n`);
+
         const user = await User.findById(decoded.userId).populate({
             path: 'role',
-            populate: {
-                path: 'permissions.layer',
-                select: 'name'
-            }
+            populate: { path: 'permissions.layer', select: '_id name' },
         });
 
         if (!user) {
-            return res.status(401).json({ error: 'User not found' });
+            fs.appendFileSync(logPath, `[${new Date().toISOString()}] ERROR: User NOT FOUND for id: ${decoded.userId}\n`);
+            return res.status(401).json({ error: 'USER_NOT_FOUND' });
+        }
+        if (!user.role) {
+            fs.appendFileSync(logPath, `[${new Date().toISOString()}] ERROR: User ${user.username} has NO ROLE\n`);
+            return res.status(401).json({ error: 'USER_NO_ROLE' });
         }
 
+        const { byLayerId, allowedLayerIds, globalActions } = buildPermissionIndex(user.role);
         req.user = user;
+        req.user._permByLayerId = byLayerId;
+        req.user._globalActions = globalActions;
+        req.allowedLayerIds = allowedLayerIds;
         next();
     } catch (err) {
-        res.status(401).json({ error: 'Invalid token' });
+        fs.appendFileSync(logPath, `[${new Date().toISOString()}] CATCH: ${err.message}\n`);
+        if (err?.name === 'TokenExpiredError') return res.status(401).json({ error: 'TOKEN_EXPIRED' });
+        return res.status(401).json({ error: 'INVALID_TOKEN' });
     }
 };
 
-// Middleware factory for checking permissions
-const hasPermission = (action, resourceType) => {
+const getResourceId = (req, paramNames = ['id', 'layerId']) => {
+    for (const k of paramNames) if (req.params?.[k]) return String(req.params[k]);
+    return null;
+};
+
+// resource-scoped permission
+const hasPermission = (action, resourceType, opts = {}) => {
+    const { allowGlobal = true, paramNames = ['id', 'layerId'] } = opts;
     return (req, res, next) => {
-        if (!req.user || !req.user.role) {
-            return res.status(403).json({ error: 'Forbidden: No role assigned' });
+        const role = req.user?.role;
+        if (!role) return res.status(403).json({ error: 'FORBIDDEN_NO_ROLE' });
+        if (role.name === 'admin') return next();
+
+        if (allowGlobal && resourceType) {
+            const key = `${resourceType.toLowerCase()}s:${action}`;
+            if (req.user?._globalActions?.has(key)) return next();
         }
 
-        // Admin has all permissions
-        if (req.user.role.name === 'admin') {
-            return next();
-        }
+        const resourceId = getResourceId(req, paramNames);
+        if (!resourceId) return res.status(400).json({ error: 'RESOURCE_ID_REQUIRED' });
 
-        let resourceId;
-        if (resourceType === 'Layer') {
-            // In routes like /api/layers/:id or /api/layers/:layerId/...
-            resourceId = req.params.id || req.params.layerId;
-        }
-        // Can be extended for other resource types like 'GeoObject'
+        const set = req.user?._permByLayerId?.get(resourceId);
+        if (set && set.has(action)) return next();
 
-        if (!resourceId) {
-            // If no specific resource, this might be a general action (e.g., creating a new layer)
-            // For now, we'll deny if no resource ID is found, but this could be adapted.
-            return res.status(400).json({ error: 'Resource ID not specified' });
-        }
-
-        const permission = req.user.role.permissions.find(p => p.layer._id.toString() === resourceId);
-
-        if (permission && permission.actions.includes(action)) {
-            return next();
-        }
-
-        return res.status(403).json({ error: 'Forbidden: Insufficient permissions' });
+        return res.status(403).json({ error: 'FORBIDDEN' });
     };
 };
 
-module.exports = { authenticate, hasPermission };
+// list endpoints: allow if global list or any allowed layer
+const requireAny = (action, resourceType) => {
+    return (req, res, next) => {
+        const role = req.user?.role;
+        if (!role) return res.status(403).json({ error: 'FORBIDDEN_NO_ROLE' });
+        if (role.name === 'admin') return next();
+
+        const key = `${resourceType.toLowerCase()}s:${action}`;
+        if (req.user?._globalActions?.has(key)) return next();
+
+        if (Array.isArray(req.allowedLayerIds) && req.allowedLayerIds.length > 0) return next();
+
+        return res.status(403).json({ error: 'FORBIDDEN_NONE_ALLOWED' });
+    };
+};
+
+const requireRole = (roleName) => (req, res, next) => {
+    const name = req.user?.role?.name;
+    if (name === roleName) return next();
+    return res.status(403).json({ error: 'FORBIDDEN_ROLE' });
+};
+
+const hasGlobal = (...keys) => (req, res, next) => {
+    const role = req.user?.role;
+    if (!role) return res.status(403).json({ error: 'FORBIDDEN_NO_ROLE' });
+    if (role.name === 'admin') return next();
+
+    const g = req.user?._globalActions || new Set();
+    const ok = keys.some((k) => g.has(k));
+    if (ok) return next();
+
+    return res.status(403).json({ error: 'FORBIDDEN' });
+};
+
+module.exports = { authenticate, hasPermission, requireAny, requireRole, hasGlobal };

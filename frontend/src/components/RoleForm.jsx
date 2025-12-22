@@ -3,7 +3,7 @@ import { Form, Input, Button, Checkbox, Row, Col, message, Spin } from 'antd';
 import { createRole, updateRole } from '../api/role';
 import { getLayers } from '../api/layer';
 
-const PERMISSIONS = ['view', 'create', 'edit', 'delete'];
+const PERMISSIONS = ['read', 'create', 'update', 'delete'];
 
 const RoleForm = ({ role, onClose }) => {
     const [form] = Form.useForm();
@@ -13,8 +13,8 @@ const RoleForm = ({ role, onClose }) => {
     useEffect(() => {
         const fetchLayers = async () => {
             try {
-                const layersData = await getLayers();
-                setLayers(layersData);
+                const layersRes = await getLayers();
+                setLayers(layersRes.data);
             } catch (error) {
                 message.error('Failed to fetch layers for permissions.');
             }
@@ -26,8 +26,9 @@ const RoleForm = ({ role, onClose }) => {
     useEffect(() => {
         if (role) {
             const permissions = {};
+            console.log(JSON.stringify(role.permissions))
             role.permissions.forEach(p => {
-                permissions[p.layer._id] = p.actions;
+                permissions[p.layer] = p.actions;
             });
             form.setFieldsValue({ name: role.name, permissions });
         } else {
@@ -74,13 +75,13 @@ const RoleForm = ({ role, onClose }) => {
                 </Form.Item>
 
                 <h3>Permissions</h3>
-                {layers.map(layer => (
+                {layers?.map(layer => (
                     <div key={layer._id}>
                         <h4>{layer.name}</h4>
                         <Form.Item name={['permissions', layer._id]}>
                              <Checkbox.Group>
                                 <Row>
-                                    {PERMISSIONS.map(permission => (
+                                    {PERMISSIONS?.map(permission => (
                                         <Col span={6} key={permission}>
                                             <Checkbox value={permission}>{permission}</Checkbox>
                                         </Col>

@@ -1,106 +1,170 @@
+// controllers/userController.js
+'use strict';
+
+const mongoose = require('mongoose');
 const User = require('../models/User');
-const bcrypt = require('bcrypt');
+const Role = require('../models/Role');
 
-// GET /users?search=&page=1&pageSize=10
+// helper: สร้าง regex จาก search string (case-insensitive)
+const makeRegex = (s = '') =>
+    new RegExp(String(s).trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+
+// GET /users?search=&page=1&pageSize=10&status=active
 exports.getUsers = async (req, res) => {
-    const { search = "", page = 1, pageSize = 10 } = req.query;
-    const query = {};
-    if (search) query.username = { $regex: search, $options: "i" };
+    try {
+        const {
+            search = '',
+            page = 1,
+            pageSize = 10,
+            status,
+        } = req.query || {};
 
-    const skip = (parseInt(page) - 1) * parseInt(pageSize);
+        const p = Math.max(1, parseInt(page, 10) || 1);
+        const ps = Math.min(100, Math.max(1, parseInt(pageSize, 10) || 10));
 
-    const [items, total] = await Promise.all([
-        User.find(query)
-            .sort({ username: 1 })
-            .skip(skip)
-            .limit(parseInt(pageSize))
-            .select("-password"), // hide password
-        User.countDocuments(query)
-    ]);
-    res.json({
-        items,
-        total,
-        page: parseInt(page),
-        pageSize: parseInt(pageSize)
-    });
+        const filter = {};
+        if (search) {
+            const rx = makeRegex(search);
+            filter.$or = [{ username: rx }, { displayName: rx }];
+        }
+        if (status) filter.status = status; // 'active' | 'disabled' | 'deleted' (ตามที่ schema คุณรองรับ)
+
+        const query = User.find(filter)
+            .select('-password -passwordChangedAt')
+            .populate('role', 'name')
+            .sort({ createdAt: -1 })
+            .skip((p - 1) * ps)
+            .limit(ps)
+            .lean();
+
+        const [items, total] = await Promise.all([
+            query,
+            User.countDocuments(filter),
+        ]);
+
+        res.json({
+            data: items,
+            total,
+            page: p,
+            pageSize: ps,
+        });
+    } catch (err) {
+        res.status(500).json({ error: err?.message || 'Server error' });
+    }
 };
 
+// GET /users/:id
+exports.getUserById = async (req, res) => {
+    try {
+        const user = await User.findById(req.params.id)
+            .select('-password -passwordChangedAt')
+            .populate('role', 'name')
+            .lean();
+        if (!user) return res.status(404).json({ error: 'User not found' });
+        res.json(user);
+    } catch (err) {
+        res.status(400).json({ error: err?.message || 'Bad request' });
+    }
+};
 
 // POST /users
 exports.createUser = async (req, res) => {
     try {
-        const { username, password, displayName, role } = req.body;
+        const { username, password, displayName, role } = req.body || {};
         if (!username || !password || !displayName) {
-            return res.status(400).json({ error: "Username/Password/DisplayName required" });
+            return res.status(400).json({ error: 'Username/Password/DisplayName required' });
         }
-        const exist = await User.findOne({ username });
-        if (exist) return res.status(400).json({ error: "Username already exists" });
 
-        const hash = await bcrypt.hash(password, 10);
-        const user = await User.create({ username, password: hash, displayName, role: role || "user" });
-        res.status(201).json({ message: "User created", id: user._id });
+        // แนะนำให้มี unique index ที่ model ด้วย
+        const exist = await User.findOne({ username });
+        if (exist) return res.status(400).json({ error: 'Username already exists' });
+
+        let roleId = undefined;
+        if (role) {
+            const roleDoc = await Role.findById(role);
+            if (!roleDoc) return res.status(400).json({ error: 'Invalid role' });
+            roleId = roleDoc._id;
+        }
+
+        // ปล่อยให้ pre-save hook ของ User ทำการ hash password เอง
+        const user = await User.create({
+            username,
+            password,      // plain -> schema pre-save จะ hash ให้
+            displayName,
+            role: roleId,
+            status: 'active',
+        });
+
+        res.status(201).json({ id: String(user._id) });
     } catch (err) {
-        res.status(400).json({ error: err.message });
+        res.status(400).json({ error: err?.message || 'Bad request' });
     }
 };
-
 
 // PUT /users/:id
 exports.updateUser = async (req, res) => {
     try {
-        const { role, displayName } = req.body;
-        if (!role || !displayName) return res.status(400).json({ error: "Role and displayName are required" });
+        const { displayName, role, status, password } = req.body || {};
+        const user = await User.findById(req.params.id);
+        if (!user) return res.status(404).json({ error: 'User not found' });
 
-        const user = await User.findByIdAndUpdate(
-            req.params.id,
-            { role, displayName },
-            { new: true }
-        ).select("-password");
-        if (!user) return res.status(404).json({ error: "User not found" });
-        res.json({ message: "User updated", user });
+        if (displayName != null) user.displayName = displayName;
+        if (status != null) user.status = status;
+
+        if (role) {
+            if (!mongoose.Types.ObjectId.isValid(role)) {
+                return res.status(400).json({ error: 'Invalid role' });
+            }
+            const roleDoc = await Role.findById(role);
+            if (!roleDoc) return res.status(400).json({ error: 'Invalid role' });
+            user.role = roleDoc._id;
+        }
+
+        if (password) {
+            // ปล่อยให้ pre-save hook hash (อย่า hash ที่นี่เพื่อเลี่ยง double-hash)
+            user.password = password;
+        }
+
+        await user.save();
+        res.json({ message: 'Updated' });
     } catch (err) {
-        res.status(400).json({ error: err.message });
+        res.status(400).json({ error: err?.message || 'Bad request' });
     }
 };
 
 // DELETE /users/:id
 exports.deleteUser = async (req, res) => {
     try {
-        const user = await User.findByIdAndDelete(req.params.id);
-        if (!user) return res.status(404).json({ error: "User not found" });
-        res.json({ message: "User deleted" });
+        // ทางเลือก A: ลบจริง (ตามเดิม)
+        // const user = await User.findByIdAndDelete(req.params.id);
+
+        // ทางเลือก B (แนะนำ): soft delete
+        const user = await User.findById(req.params.id);
+        if (!user) return res.status(404).json({ error: 'User not found' });
+        user.status = 'deleted';
+        await user.save();
+
+        res.json({ message: 'Deleted' });
     } catch (err) {
-        res.status(400).json({ error: err.message });
+        res.status(400).json({ error: err?.message || 'Bad request' });
     }
 };
 
 // PUT /users/:id/reset-password
 exports.resetPassword = async (req, res) => {
     try {
-        const { newPassword } = req.body;
-        if (!newPassword || newPassword.length < 6) {
-            return res.status(400).json({ error: "Password required (min 6 chars)" });
-        }
-        const hash = await bcrypt.hash(newPassword, 10);
-        const user = await User.findByIdAndUpdate(
-            req.params.id,
-            { password: hash },
-            { new: true }
-        ).select("-password");
-        if (!user) return res.status(404).json({ error: "User not found" });
-        res.json({ message: "Password reset", user });
-    } catch (err) {
-        res.status(400).json({ error: err.message });
-    }
-};
+        const { newPassword } = req.body || {};
+        if (!newPassword) return res.status(400).json({ error: 'newPassword required' });
 
-// GET /users/:id  (optional)
-exports.getUserById = async (req, res) => {
-    try {
-        const user = await User.findById(req.params.id).select("-password");
-        if (!user) return res.status(404).json({ error: "User not found" });
-        res.json(user);
+        const user = await User.findById(req.params.id);
+        if (!user) return res.status(404).json({ error: 'User not found' });
+
+        // ปล่อยให้ pre-save hook hash
+        user.password = newPassword;
+        await user.save();
+
+        res.json({ message: 'Password reset' });
     } catch (err) {
-        res.status(400).json({ error: err.message });
+        res.status(400).json({ error: err?.message || 'Bad request' });
     }
 };

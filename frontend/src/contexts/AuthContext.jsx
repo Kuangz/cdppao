@@ -38,9 +38,14 @@ export const AuthProvider = ({ children }) => {
         setLoading(true);
         try {
             const res = await api.post("/auth/login", { username, password });
+            const roleName = res.data?.role?.name || 'user';
+            const roleId = res.data?.role?.id || res.data?.role?._id || null;
+
             setAccessToken(res.data.accessToken);
-            rememberUser(res.data.username, res.data.role || "user", res.data.displayName, remember);
-            setUser({ username: res.data.username, role: res.data.role || "user", displayName: res.data.displayName });
+
+            rememberUser(res.data.username, roleName, res.data.displayName, remember, roleId);
+            setUser({ username: res.data.username, role: roleName, roleId, displayName: res.data.displayName });
+
             console.log(user)
             return { success: true };
         } catch (err) {
@@ -65,7 +70,11 @@ export const AuthProvider = ({ children }) => {
         setLoading(true);
         try {
             const res = await api.get("/auth/me");
-            setUser({ username: res.data.username, role: res.data.role, displayName: res.data.displayName });
+            const roleName = res.data?.role?.name || 'user';
+            const roleId = res.data?.role?.id || res.data?.role?._id || null;
+
+            setUser({ username: res.data.username, role: roleName, roleId, displayName: res.data.displayName });
+
             return true;
         } catch (e) {
             console.warn("checkAuth failed", e); // เพิ่ม debug

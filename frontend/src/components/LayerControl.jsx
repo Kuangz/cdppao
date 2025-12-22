@@ -21,7 +21,7 @@ const LayerControl = ({ layers, visibleLayerIds, onVisibilityChange, onCreateObj
     const canCreate = (layerId) => {
         if (!user || !user.role) return false;
         if (user.role.name === 'admin') return true;
-        const permission = user.role.permissions.find(p => p.layer._id === layerId);
+        const permission = user.role.permissions?.find(p => p.layer._id === layerId);
         return permission && permission.actions.includes('create');
     };
 

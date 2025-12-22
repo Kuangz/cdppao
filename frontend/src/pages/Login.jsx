@@ -18,7 +18,10 @@ const Login = () => {
 
         if (result.success) {
             messageApi.success("เข้าสู่ระบบสำเร็จ!", 1);
-            setTimeout(() => navigate("/dashboard"), 900);
+            setTimeout(() => {
+                if (result?.roleName === 'admin') navigate('/admin');
+                else navigate('/dashboard');
+            }, 900);
         } else {
             messageApi.error(result.error || "Login failed", 2);
         }

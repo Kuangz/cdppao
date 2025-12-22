@@ -1,17 +1,19 @@
+// routes/user.js
+'use strict';
 const express = require('express');
 const router = express.Router();
+
 const userController = require('../controllers/userController');
-const auth = require('../middleware/auth');
-const isAdmin = require('../middleware/isAdmin');
+const { authenticate, requireRole } = require('../middleware/auth');
 
-// -- All routes require admin
-router.use(auth, isAdmin);
+// admin only
+router.use(authenticate, requireRole('admin'));
 
-router.get("/", userController.getUsers);
-router.post("/", userController.createUser);
-router.put("/:id", userController.updateUser);
-router.delete("/:id", userController.deleteUser);
-router.put("/:id/reset-password", userController.resetPassword);
-router.get("/:id", userController.getUserById); // optional
+router.get('/', userController.getUsers);
+router.post('/', userController.createUser);
+router.put('/:id', userController.updateUser);
+router.delete('/:id', userController.deleteUser);
+router.put('/:id/reset-password', userController.resetPassword);
+router.get('/:id', userController.getUserById);
 
 module.exports = router;

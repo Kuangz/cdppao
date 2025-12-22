@@ -75,7 +75,7 @@ const RoleManagementPage = () => {
                             Modal.confirm({
                                 title: 'Are you sure?',
                                 content: `Do you want to delete the role "${record.name}"?`,
-                                onOk: () => handleDelete(record._id),
+                                onOk: () => handleDelete(record._id || record.id),
                             })
                         }
                     >
@@ -101,7 +101,7 @@ const RoleManagementPage = () => {
                 columns={columns}
                 dataSource={roles}
                 loading={loading}
-                rowKey="_id"
+                rowKey={record => record._id || record.id}
             />
             <Modal
                 title={editingRole ? 'Edit Role' : 'Add Role'}

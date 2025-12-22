@@ -1,10 +1,15 @@
-const mongoose = require("mongoose");
+// models/RefreshToken.js
+'use strict';
 
-const RefreshTokenSchema = new mongoose.Schema({
-    userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
-    token: { type: String, required: true, unique: true },
-    createdAt: { type: Date, default: Date.now },
-    expiresAt: { type: Date, required: true },
-});
+const mongoose = require('mongoose');
 
-module.exports = mongoose.model("RefreshToken", RefreshTokenSchema);
+const RefreshTokenSchema = new mongoose.Schema(
+    {
+        userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', index: true, required: true },
+        token: { type: String, unique: true, required: true },
+        expiresAt: { type: Date, index: { expireAfterSeconds: 0 } }, // TTL index
+    },
+    { timestamps: true }
+);
+
+module.exports = mongoose.model('RefreshToken', RefreshTokenSchema);

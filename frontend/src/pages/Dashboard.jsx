@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Row, Col, Card, Spin, message, Button, Space, Image, Form, Drawer, Grid } from 'antd';
+import { Row, Col, Card, Spin, Button, Space, Image, Form, Drawer, Grid } from 'antd';
 import { MenuFoldOutlined, MenuUnfoldOutlined, PlusOutlined } from '@ant-design/icons';
 
 import { useNavigate } from 'react-router-dom';
@@ -11,6 +11,7 @@ import GeoObjectForm from '../components/GeoObjectForm';
 import ObjectDetailCard from '../components/ObjectDetailCard';
 import useCurrentLocation from '../hooks/useCurrentLocation';
 import useResponsiveMapHeight from '../hooks/useResponsiveMapHeight';
+import { useMessageApi } from '../contexts/MessageContext';
 
 const Dashboard = () => {
     const [layers, setLayers] = useState([]);
@@ -23,11 +24,12 @@ const Dashboard = () => {
     const [form] = Form.useForm();
     const screens = Grid.useBreakpoint();
     const isMobile = !screens.md;
+    const messageApi = useMessageApi();
 
     useEffect(() => {
         if (panelMode === 'edit' && selectedObject) {
             form.setFieldsValue(selectedObject);
-        } else {
+        } else if (panelMode === 'create') {
             form.resetFields();
         }
     }, [panelMode, selectedObject, form]);
@@ -60,7 +62,7 @@ const Dashboard = () => {
             setGeoObjects(newGeoObjects);
 
         } catch (err) {
-            message.error("Failed to load map data.");
+            messageApi.error("Failed to load map data.");
             console.error("Failed to fetch data:", err);
         } finally {
             setLoading(false);
@@ -112,17 +114,17 @@ const Dashboard = () => {
         try {
             if (panelMode === 'create') {
                 await createGeoObject(formData);
-                message.success('Object created successfully!');
+                messageApi.success('Object created successfully!');
             } else if (panelMode === 'edit' && selectedObject) {
                 await updateGeoObject(selectedObject._id, formData);
-                message.success('Object updated successfully!');
+                messageApi.success('Object updated successfully!');
             }
             setPanelMode('details');
             setSelectedObject(null); // Deselect object after submit
             loadData(); // Reload all data to reflect changes
         } catch (error) {
             const errData = error.response?.data?.error || 'Failed to save object.';
-            message.error(errData);
+            messageApi.error(errData);
             console.error("Form submission error:", error);
         }
     };
@@ -185,15 +187,9 @@ const Dashboard = () => {
     if (loading) {
         return (
             <div style={centerStyle}>
-                <Spin size="large" tip="Loading map data..." />
-            </div>
-        );
-    }
-
-    if (loading) {
-        return (
-            <div style={centerStyle}>
-                <Spin size="large" tip="Loading map data..." />
+                <Spin size="large">
+                    <div style={{ marginTop: 40 }}>Loading map data...</div>
+                </Spin>
             </div>
         );
     }

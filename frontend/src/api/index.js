@@ -22,6 +22,9 @@ api.interceptors.request.use(
     config => {
         if (accessToken) {
             config.headers.Authorization = `Bearer ${accessToken}`;
+            console.log(`[API Request] ${config.method.toUpperCase()} ${config.url} with token: ${accessToken.slice(0, 10)}...`);
+        } else {
+            console.warn(`[API Request] ${config.method.toUpperCase()} ${config.url} - NO TOKEN`);
         }
         return config;
     },
@@ -37,6 +40,12 @@ api.interceptors.response.use(
             "/auth/login",
             "/auth/register"
         ];
+
+        if (error.response) {
+            console.error(`[API Response Error] ${error.response.status} ${error.config.url}`, error.response.data);
+        } else {
+            console.error(`[API Request/Network Error] ${error.message}`);
+        }
 
         if (error.response
             && error.response.status === 401

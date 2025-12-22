@@ -1,13 +1,9 @@
 import api from "../api";
 
+
 export const fetchUsers = ({ search = "", page = 1, pageSize = 10 } = {}) =>
     api.get("/users", { params: { search, page, pageSize } })
-        .then(res => ({
-            data: res.data.items,
-            total: res.data.total,
-            page: res.data.page,
-            pageSize: res.data.pageSize
-        }));
+        .then(res => res.data);
 
 // สร้าง user ใหม่
 export const createUser = (data) =>

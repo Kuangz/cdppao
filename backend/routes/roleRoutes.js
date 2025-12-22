@@ -1,19 +1,17 @@
+// routes/roleRoutes.js
+'use strict';
 const express = require('express');
 const router = express.Router();
-const {
-  getRoles,
-  getRoleById,
-  createRole,
-  updateRole,
-  deleteRole,
-} = require('../controllers/roleController');
-const { hasPermission } = require('../middleware/auth'); // Assuming a general permission middleware
 
-// For all routes, only admins can manage roles.
-// The specific 'admin' string might be replaced by a more robust check later.
-router.use(hasPermission('admin'));
+const { getRoles, getRoleById, createRole, updateRole, deleteRole } = require('../controllers/roleController');
+const { authenticate, hasGlobal } = require('../middleware/auth');
 
-router.route('/').get(getRoles).post(createRole);
-router.route('/:id').get(getRoleById).put(updateRole).delete(deleteRole);
+router.use(authenticate);
+
+router.get('/', hasGlobal('roles:list'), getRoles);
+router.post('/', hasGlobal('roles:create'), createRole);
+router.get('/:id', hasGlobal('roles:read'), getRoleById);
+router.put('/:id', hasGlobal('roles:update'), updateRole);
+router.delete('/:id', hasGlobal('roles:delete'), deleteRole);
 
 module.exports = router;

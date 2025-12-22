@@ -23,19 +23,16 @@ import {
 import * as userApi from "../api/user";
 import { useAuth } from "../contexts/AuthContext";
 import { useMessageApi } from "../contexts/MessageContext";
-
+import { getRoles } from "../api/role";
 const { Title } = Typography;
-const ROLE_OPTIONS = [
-    { value: "user", label: "User" },
-    { value: "admin", label: "Admin" }
-];
+
 
 export default function UserManagement() {
     const { user } = useAuth();
     const messageApi = useMessageApi();
 
     const [resetUserId, setResetUserId] = useState(null);
-
+    const [roleOptions, setRoleOptions] = useState([]);
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(false);
     const [pagination, setPagination] = useState({
@@ -49,6 +46,13 @@ export default function UserManagement() {
     const [editingUser, setEditingUser] = useState(null);
     const [form] = Form.useForm();
 
+    useEffect(() => {
+        (async () => {
+            const roles = await getRoles();
+            setRoleOptions(roles.map(r => ({ value: r._id || r.id, label: r.name })));
+        })();
+    }, []);
+
     // --- Fetch users ---
     const fetchUsers = useCallback(async ({ search, page, pageSize } = {}) => {
         setLoading(true);
@@ -58,6 +62,7 @@ export default function UserManagement() {
                 page: page !== undefined ? page : pagination.current,
                 pageSize: pageSize !== undefined ? pageSize : pagination.pageSize
             });
+            console.log(res)
             setUsers(res.data);
             setPagination({
                 current: res.page,
@@ -97,7 +102,7 @@ export default function UserManagement() {
             form.setFieldsValue({
                 username: record.username,
                 displayName: record.displayName,
-                role: record.role,
+                role: record.role?._id || record.role?.id || record.role, // normalize เป็น id
             });
         } else {
             form.resetFields();
@@ -161,11 +166,14 @@ export default function UserManagement() {
             title: "หน้าที่",
             dataIndex: "role",
             key: "role",
-            render: (role) => (
-                <Tag color={role === "admin" ? "geekblue" : "green"}>
-                    {role.toUpperCase()}
-                </Tag>
-            )
+            render: (role) => {
+                const name = typeof role === 'string' ? role : role?.name;
+                return (
+                    <Tag color={name === "admin" ? "geekblue" : "green"}>
+                        {(name || 'user').toUpperCase()}
+                    </Tag>
+                );
+            }
         },
         {
             title: "#",
@@ -266,7 +274,7 @@ export default function UserManagement() {
                         name="role"
                         rules={[{ required: true, message: "กรุณาเลือก Role" }]}
                     >
-                        <Select options={ROLE_OPTIONS} />
+                        <Select options={roleOptions} />
                     </Form.Item>
                 </Form>
             </Modal>
