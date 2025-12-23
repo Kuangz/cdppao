@@ -434,6 +434,7 @@ const Dashboard = () => {
                 <div className={`dashboard-floating-panel ${!isPanelVisible ? 'hidden' : ''}`}>
                     {/* Panel Header */}
                     <div className="dashboard-panel-header">
+                        <img src="/logo_provincial.png" alt="logo" style={{ height: '40px', marginRight: '10px' }} />
                         <span className="dashboard-panel-title">CDP PAO</span>
                         <Button
                             type="text"

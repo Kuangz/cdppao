@@ -23,7 +23,7 @@ services:
     ports:
       - "27022:27017"
     volumes:
-      - mongo_data:/data/db
+      - ./mongo-data:/data/db
     networks:
       - cdppao-network
 
