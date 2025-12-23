@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Form, Select, message, Card, Typography } from 'antd';
+import { Form, Select, Card, Typography } from 'antd';
 import { getLayers } from '../api/layer';
 import { createGeoObject } from '../api/geoObject';
 import GeoObjectForm from '../components/GeoObjectForm';
 import { useNavigate } from 'react-router-dom';
+import { useMessageApi } from '../contexts/MessageContext';
 
 const { Option } = Select;
 const { Title } = Typography;
@@ -14,6 +15,7 @@ const GeoObjectCreatePage = () => {
     const [loading, setLoading] = useState(false);
     const [form] = Form.useForm();
     const navigate = useNavigate();
+    const messageApi = useMessageApi();
 
     useEffect(() => {
         const fetchLayersData = async () => {
@@ -21,7 +23,7 @@ const GeoObjectCreatePage = () => {
                 const res = await getLayers();
                 setLayers(res.data);
             } catch (error) {
-                message.error('Failed to fetch layers.');
+                messageApi.error('Failed to fetch layers.');
             }
         };
         fetchLayersData();
@@ -35,7 +37,7 @@ const GeoObjectCreatePage = () => {
 
     const handleFinish = async (values) => {
         if (!selectedLayer) {
-            message.error('Something went wrong. No layer is selected.');
+            messageApi.error('Something went wrong. No layer is selected.');
             return;
         }
         setLoading(true);
@@ -52,11 +54,11 @@ const GeoObjectCreatePage = () => {
             }
 
             await createGeoObject(formData);
-            message.success(`New object created in layer "${selectedLayer.name}" successfully!`);
+            messageApi.success(`New object created in layer "${selectedLayer.name}" successfully!`);
             navigate('/dashboard');
         } catch (error) {
             const errorMessage = error.response?.data?.error || 'Failed to create object.';
-            message.error(errorMessage);
+            messageApi.error(errorMessage);
         } finally {
             setLoading(false);
         }

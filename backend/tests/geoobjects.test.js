@@ -9,15 +9,16 @@ const { authenticate, hasPermission } = require('../middleware/auth');
 const { checkGeoObjectPermission } = require('../middleware/geoObjectPermission');
 
 // Mocking the new middleware
-const mockTestLayerId = new mongoose.Types.ObjectId();
+// Mocking the new middleware
+const mockTestLayerId = '507f1f77bcf86cd799439011';
 jest.mock('../middleware/auth', () => ({
     authenticate: jest.fn((req, res, next) => {
         req.user = {
-            id: 'userId',
+            id: '507f1f77bcf86cd799439013',
             role: {
                 name: 'user',
                 permissions: [
-                    { layer: { _id: mockTestLayerId }, actions: ['view', 'create', 'edit', 'delete'] },
+                    { layer: { _id: mockTestLayerId }, actions: ['read', 'create', 'update', 'delete'] },
                 ]
             }
         };
@@ -60,6 +61,8 @@ jest.mock('../middleware/geoObjectPermission', () => ({
 }));
 
 
+
+
 const app = express();
 app.use(express.json());
 app.use('/api/geoobjects', geoObjectRoutes);
@@ -68,19 +71,31 @@ describe('GeoObject API Endpoints with History and Soft Delete', () => {
     let testLayer;
 
     beforeAll(async () => {
-        await mongoose.connect(process.env.MONGO_URL);
+        try {
+            await mongoose.connect(process.env.MONGO_URL);
+        } catch (e) {
+            console.error('beforeAll mongoose.connect failed:', e);
+            throw e;
+        }
     });
 
     beforeEach(async () => {
+        process.stdout.write('DEBUG: Must see this\n');
         // Create a sample layer before each test
-        testLayer = await Layer.create({
-            _id: mockTestLayerId,
-            name: 'Test Point Layer',
-            geometryType: 'Point',
-            fields: [
-                { name: 'name', label: 'Name', type: 'String', required: true },
-            ]
-        });
+        try {
+            testLayer = await Layer.create({
+                _id: mockTestLayerId,
+                name: 'Test Point Layer',
+                geometryType: 'Point',
+                fields: [
+                    { name: 'name', label: 'Name', type: 'String', required: true },
+                ]
+            });
+            process.stdout.write('DEBUG: Layer created\n');
+        } catch (error) {
+            process.stdout.write('DEBUG: beforeEach Layer.create failed: ' + error + '\n');
+            throw error;
+        }
     });
 
     afterEach(async () => {
@@ -99,9 +114,17 @@ describe('GeoObject API Endpoints with History and Soft Delete', () => {
 
             const res = await request(app)
                 .post('/api/geoobjects')
-                .field('layerId', testLayer._id.toString())
-                .field('geometry', JSON.stringify(geometry))
-                .field('properties', JSON.stringify(properties));
+                .send({
+                    layerId: testLayer._id.toString(),
+                    geometry: JSON.stringify(geometry),
+                    properties: JSON.stringify(properties)
+                });
+
+            if (res.statusCode !== 201) {
+                console.log('POST /api/geoobjects failed. Status:', res.statusCode);
+                console.log('Response body:', JSON.stringify(res.body, null, 2));
+                console.log('Response error (if any):', res.error);
+            }
 
             expect(res.statusCode).toEqual(201);
             expect(res.body).toHaveProperty('layerId', testLayer._id.toString());
@@ -119,9 +142,11 @@ describe('GeoObject API Endpoints with History and Soft Delete', () => {
 
             const res = await request(app)
                 .post('/api/geoobjects')
-                .field('layerId', testLayer._id.toString())
-                .field('geometry', JSON.stringify(geometry))
-                .field('properties', JSON.stringify(properties));
+                .send({
+                    layerId: testLayer._id.toString(),
+                    geometry: JSON.stringify(geometry),
+                    properties: JSON.stringify(properties)
+                });
 
             expect(res.statusCode).toEqual(400);
             expect(res.body.error).toContain("Property 'Name' is required.");

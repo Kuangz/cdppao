@@ -16,15 +16,17 @@ root.render(
     <ConfigProvider
       theme={{ token: { fontFamily: 'Noto Sans Thai, sans-serif', fontSize: 16 } }}
     >
-      <LocationProvider>
-        <MessageProvider>
-          <BrowserRouter>
-            <AuthProvider>
-              <App />
-            </AuthProvider>
-          </BrowserRouter>
-        </MessageProvider>
-      </LocationProvider>
+      <AntApp>
+        <LocationProvider>
+          <MessageProvider>
+            <BrowserRouter>
+              <AuthProvider>
+                <App />
+              </AuthProvider>
+            </BrowserRouter>
+          </MessageProvider>
+        </LocationProvider>
+      </AntApp>
     </ConfigProvider>
   </React.StrictMode>
 );

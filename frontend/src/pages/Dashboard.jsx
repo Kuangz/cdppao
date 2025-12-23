@@ -1,8 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Row, Col, Card, Spin, Button, Space, Image, Form, Drawer, Grid } from 'antd';
-import { MenuFoldOutlined, MenuUnfoldOutlined, PlusOutlined } from '@ant-design/icons';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { Card, Spin, Button, Form, Drawer, Grid, Tabs, Input, List, Skeleton, Empty, Typography, FloatButton, Modal } from 'antd';
+import { MenuFoldOutlined, MenuUnfoldOutlined, SearchOutlined, EnvironmentOutlined, PlusOutlined, ArrowLeftOutlined, EditOutlined } from '@ant-design/icons';
 
-import { useNavigate } from 'react-router-dom';
 import { getLayers } from '../api/layer';
 import { getGeoObjectsByLayer, createGeoObject, updateGeoObject } from '../api/geoObject';
 import DynamicMap from '../components/Map/DynamicMap';
@@ -10,8 +9,12 @@ import LayerControl from '../components/LayerControl';
 import GeoObjectForm from '../components/GeoObjectForm';
 import ObjectDetailCard from '../components/ObjectDetailCard';
 import useCurrentLocation from '../hooks/useCurrentLocation';
-import useResponsiveMapHeight from '../hooks/useResponsiveMapHeight';
 import { useMessageApi } from '../contexts/MessageContext';
+
+import './Dashboard.css';
+
+const { TabPane } = Tabs;
+const { Text } = Typography;
 
 const Dashboard = () => {
     const [layers, setLayers] = useState([]);
@@ -20,11 +23,22 @@ const Dashboard = () => {
     const [loading, setLoading] = useState(true);
     const [selectedObject, setSelectedObject] = useState(null);
     const [isPanelVisible, setPanelVisible] = useState(true);
-    const [panelMode, setPanelMode] = useState('details'); // 'details', 'create', 'edit'
+    const [activeTab, setActiveTab] = useState('layers'); // 'layers', 'list', 'details'
+    const [searchText, setSearchText] = useState('');
+    const [panelMode, setPanelMode] = useState('view'); // 'view', 'create', 'edit'
+
+    // For Create FAB
+    const [isLayerSelectModalVisible, setLayerSelectModalVisible] = useState(false);
+
+    // For Infinite Scroll
+    const [displayedLimit, setDisplayedLimit] = useState(20);
+    const scrollContainerRef = useRef(null);
+
     const [form] = Form.useForm();
     const screens = Grid.useBreakpoint();
     const isMobile = !screens.md;
     const messageApi = useMessageApi();
+    const { location } = useCurrentLocation(true);
 
     useEffect(() => {
         if (panelMode === 'edit' && selectedObject) {
@@ -33,11 +47,6 @@ const Dashboard = () => {
             form.resetFields();
         }
     }, [panelMode, selectedObject, form]);
-
-
-    const navigate = useNavigate();
-    const { location } = useCurrentLocation(true);
-    // const mapHeight = useResponsiveMapHeight(600, 400);
 
     const loadData = useCallback(async () => {
         setLoading(true);
@@ -62,12 +71,12 @@ const Dashboard = () => {
             setGeoObjects(newGeoObjects);
 
         } catch (err) {
-            messageApi.error("Failed to load map data.");
+            messageApi.error("โหลดข้อมูลไม่สำเร็จ");
             console.error("Failed to fetch data:", err);
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [messageApi]);
 
     useEffect(() => {
         loadData();
@@ -75,38 +84,45 @@ const Dashboard = () => {
 
     const handleSelectObject = useCallback((object) => {
         setSelectedObject(object);
-        setPanelMode('details'); // Switch to details view when a new object is selected
+        setActiveTab('details');
+        setPanelMode('view');
         setPanelVisible(true);
-        setTimeout(() => {
-            document.getElementById("detail-section")?.scrollIntoView({ behavior: "smooth" });
-        }, 200);
-    }, []);
+        if (isMobile) {
+            // On mobile, maybe fly to location? handled by map component usually, but we want to show drawer
+        }
+    }, [isMobile]);
+
+    const handleCreateClick = () => {
+        setLayerSelectModalVisible(true);
+    };
+
+    const handleLayerSelect = (layerId) => {
+        setLayerSelectModalVisible(false);
+        const layer = layers.find(l => l._id === layerId);
+        if (layer) {
+            setSelectedObject({ layerId: layer._id });
+            setPanelMode('create');
+            setActiveTab('details'); // Use 'details' tab area for form? Or 'create' specific?
+            setPanelVisible(true);
+            // Ensure 'layers' or 'list' isn't active if we want to show form. 
+            // In renderPanelContent, 'create' mode overrides Tabs. So just need to set panelMode.
+        }
+    };
+
 
     const handleFormSubmit = async (values) => {
         const formData = new FormData();
-
-        // The form values are nested under 'properties'. We need to handle this.
-        // Let's check the form structure. The form has top-level `layerId`, `geometry`, `properties`, `images`.
-
         formData.append('layerId', values.layerId);
         formData.append('geometry', JSON.stringify(values.geometry));
 
-        // The custom fields are nested inside 'properties' object by the form.
         if (values.properties) {
             formData.append('properties', JSON.stringify(values.properties));
         }
 
-        // Handle file uploads
         if (values.images && values.images.length > 0) {
             values.images.forEach(file => {
-                // When editing, existing images are strings, new ones are objects.
                 if (file.originFileObj) {
                     formData.append('images', file.originFileObj);
-                } else if (typeof file.url === 'string') {
-                    // Need a way to tell the backend to keep existing images.
-                    // For now, let's just append the URL string. The backend needs to handle this.
-                    // A better approach would be to have a separate field for `existingImages`.
-                    // For now, this is a simplification.
                 }
             });
         }
@@ -114,154 +130,322 @@ const Dashboard = () => {
         try {
             if (panelMode === 'create') {
                 await createGeoObject(formData);
-                messageApi.success('Object created successfully!');
+                messageApi.success('สร้างสถานที่สำเร็จ!');
             } else if (panelMode === 'edit' && selectedObject) {
                 await updateGeoObject(selectedObject._id, formData);
-                messageApi.success('Object updated successfully!');
+                messageApi.success('อัปเดตข้อมูลสำเร็จ!');
             }
-            setPanelMode('details');
-            setSelectedObject(null); // Deselect object after submit
-            loadData(); // Reload all data to reflect changes
+            setActiveTab('details');
+            setPanelMode('view');
+            setSelectedObject(null); // Deselect or maybe keep selected? Let's deselect for now or select the new one if possible
+            if (panelMode === 'edit') setSelectedObject(null); // Clear selection to force refresh or re-fetch
+
+            loadData();
         } catch (error) {
-            const errData = error.response?.data?.error || 'Failed to save object.';
+            const errData = error.response?.data?.error || 'บันทึกข้อมูลไม่สำเร็จ';
             messageApi.error(errData);
             console.error("Form submission error:", error);
         }
     };
 
-    const handleVisibilityChange = (newVisibleIds) => {
-        setVisibleLayerIds(newVisibleIds);
+    // Filter objects for the list view
+    const filteredObjects = useMemo(() => {
+        let allObjects = [];
+        layers.forEach(layer => {
+            if (visibleLayerIds.includes(layer._id) && geoObjects[layer._id]) {
+                const threadObjects = geoObjects[layer._id].map(obj => ({ ...obj, _layerName: layer.name, _layerColor: layer.color }));
+                allObjects = allObjects.concat(threadObjects);
+            }
+        });
+
+        if (!searchText) return allObjects;
+
+        const lowerSearch = searchText.toLowerCase();
+        return allObjects.filter(obj => {
+            const name = obj.properties?.name || obj.properties?.label || obj.properties?.title || '';
+            const desc = obj.properties?.description || '';
+            return name.toLowerCase().includes(lowerSearch) || desc.toLowerCase().includes(lowerSearch);
+        });
+    }, [layers, geoObjects, visibleLayerIds, searchText]);
+
+    // Handle Infinite Scroll
+    const handleScroll = (e) => {
+        const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+        // Check if scrolled to bottom (with some buffer)
+        if (scrollHeight - scrollTop - clientHeight < 50) {
+            if (displayedLimit < filteredObjects.length) {
+                setDisplayedLimit(prev => prev + 20);
+            }
+        }
     };
 
+    // Reset limit when filter changes
+    useEffect(() => {
+        setDisplayedLimit(20);
+        // Also scroll to top if ref exists
+        if (scrollContainerRef.current) {
+            scrollContainerRef.current.scrollTop = 0;
+        }
+    }, [searchText, activeTab]);
+
     const renderPanelContent = () => {
-        return (
-            <>
-                {panelMode === 'details' && (
-                    <>
-                        <LayerControl
-                            layers={layers}
-                            visibleLayerIds={visibleLayerIds}
-                            onVisibilityChange={handleVisibilityChange}
-                            onCreateObject={(layerId) => {
-                                const layer = layers.find(l => l._id === layerId);
-                                if (layer) {
-                                    setSelectedObject({ layerId: layer._id });
-                                    setPanelMode('create');
-                                    setPanelVisible(true);
-                                }
-                            }}
-                        />
-                        <div id="detail-section" style={{ marginTop: '16px' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                                <h4 style={{ margin: 0 }}>รายละเอียด</h4>
-                                {selectedObject && panelMode === 'details' && (
-                                    <Button size="small" onClick={() => setPanelMode('edit')}>แก้ไข</Button>
-                                )}
-                            </div>
-                            <ObjectDetailCard
-                                object={selectedObject}
-                                layer={layers.find(l => l._id === selectedObject?.layerId)}
-                            />
-                        </div>
-                    </>
-                )}
-                {(panelMode === 'create' || panelMode === 'edit') && (
+        if (loading) return <Skeleton active />;
+
+        if (panelMode === 'create' || panelMode === 'edit') {
+            return (
+                <div className="tab-scroll-container">
                     <GeoObjectForm
                         form={form}
                         key={selectedObject?._id || 'create'}
                         initialValues={panelMode === 'edit' ? selectedObject : null}
-                        layer={panelMode === 'edit' ? layers.find(l => l._id === selectedObject.layerId) : null}
+                        layer={layers.find(l => l._id === selectedObject?.layerId)}
                         layers={layers}
                         onFinish={handleFormSubmit}
-                        onCancel={() => setPanelMode('details')}
+                        onCancel={() => {
+                            setPanelMode('view');
+                            if (panelMode === 'create') setActiveTab('layers');
+                            else setActiveTab('details');
+                        }}
                     />
-                )}
-            </>
+                </div>
+            );
+        }
+
+        // displayed objects for infinite scroll
+        const displayedObjects = filteredObjects.slice(0, displayedLimit);
+
+        return (
+            <Tabs
+                className="full-height-tabs"
+                activeKey={activeTab}
+                onChange={setActiveTab}
+                items={[
+                    {
+                        key: 'layers',
+                        label: 'ชั้นข้อมูล',
+                        children: (
+                            <div
+                                className="tab-scroll-container"
+                                onScroll={handleScroll}
+                                ref={activeTab === 'layers' ? scrollContainerRef : null}
+                            >
+                                <Input
+                                    placeholder="ค้นหาสถานที่..."
+                                    prefix={<SearchOutlined />}
+                                    value={searchText}
+                                    onChange={e => setSearchText(e.target.value)}
+                                    style={{ marginBottom: 16 }}
+                                    allowClear
+                                />
+                                {searchText ? (
+                                    <List
+                                        itemLayout="horizontal"
+                                        dataSource={displayedObjects}
+                                        renderItem={item => (
+                                            <List.Item
+                                                onClick={() => handleSelectObject(item)}
+                                                className="list-item-hover"
+                                                style={{ cursor: 'pointer', padding: '8px', borderRadius: '4px' }}
+                                            >
+                                                <List.Item.Meta
+                                                    avatar={<EnvironmentOutlined style={{ color: item._layerColor || '#1890ff' }} />}
+                                                    title={<Text strong>{item.properties?.name || 'ไม่มีชื่อ'}</Text>}
+                                                    description={<Text type="secondary" style={{ fontSize: '12px' }}>{item._layerName}</Text>}
+                                                />
+                                            </List.Item>
+                                        )}
+                                    />
+                                ) : (
+                                    <LayerControl
+                                        layers={layers}
+                                        visibleLayerIds={visibleLayerIds}
+                                        onVisibilityChange={setVisibleLayerIds}
+                                        onCreateObject={(layerId) => {
+                                            const layer = layers.find(l => l._id === layerId);
+                                            if (layer) {
+                                                setSelectedObject({ layerId: layer._id });
+                                                setPanelMode('create');
+                                            }
+                                        }}
+                                    />
+                                )}
+                            </div>
+                        )
+                    },
+                    {
+                        key: 'list',
+                        label: 'รายการ',
+                        children: (
+                            <div
+                                className="tab-scroll-container"
+                                onScroll={handleScroll}
+                                ref={activeTab === 'list' ? scrollContainerRef : null}
+                            >
+                                <div style={{ position: 'sticky', top: 0, zIndex: 1, backgroundColor: '#fff', paddingBottom: 8 }}>
+                                    <Input
+                                        placeholder="กรองรายการ..."
+                                        prefix={<SearchOutlined />}
+                                        value={searchText}
+                                        onChange={e => setSearchText(e.target.value)}
+                                        allowClear
+                                    />
+                                    <div style={{ marginTop: 8, fontSize: '12px', color: '#888' }}>
+                                        แสดง {displayedObjects.length} จาก {filteredObjects.length} รายการ
+                                    </div>
+                                </div>
+                                <List
+                                    itemLayout="horizontal"
+                                    dataSource={displayedObjects}
+                                    renderItem={item => (
+                                        <List.Item
+                                            onClick={() => handleSelectObject(item)}
+                                            style={{
+                                                cursor: 'pointer',
+                                                padding: '8px',
+                                                borderRadius: '4px',
+                                                backgroundColor: selectedObject?._id === item._id ? '#e6f7ff' : 'transparent'
+                                            }}
+                                            className="list-item-hover"
+                                        >
+                                            <List.Item.Meta
+                                                avatar={<EnvironmentOutlined style={{ color: item._layerColor || '#1890ff' }} />}
+                                                title={item.properties?.name || 'ไม่มีชื่อ'}
+                                                description={item._layerName}
+                                            />
+                                        </List.Item>
+                                    )}
+                                />
+                                {displayedLimit < filteredObjects.length && (
+                                    <div style={{ textAlign: 'center', padding: '10px' }}>
+                                        <Spin size="small" /> กำลังโหลด...
+                                    </div>
+                                )}
+                            </div>
+                        )
+                    },
+                    {
+                        key: 'details',
+                        label: 'รายละเอียด',
+                        disabled: !selectedObject,
+                        children: (
+                            <div className="tab-scroll-container">
+                                {selectedObject ? (
+                                    <>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', paddingBottom: '12px', borderBottom: '1px solid #f0f0f0' }}>
+                                            <Button
+                                                type="link"
+                                                icon={<ArrowLeftOutlined />}
+                                                onClick={() => setActiveTab('layers')}
+                                                style={{ paddingLeft: 0, fontWeight: 500, color: '#595959' }}
+                                            >
+                                                ย้อนกลับ
+                                            </Button>
+                                            <Button
+                                                type="text"
+                                                icon={<EditOutlined />}
+                                                onClick={() => setPanelMode('edit')}
+                                                style={{ color: '#1890ff', backgroundColor: '#e6f7ff' }}
+                                            >
+                                                แก้ไข
+                                            </Button>
+                                        </div>
+                                        <ObjectDetailCard
+                                            object={selectedObject}
+                                            layer={layers.find(l => l._id === selectedObject?.layerId)}
+                                        />
+                                    </>
+                                ) : (
+                                    <Empty description="ยังไม่ได้เลือกสถานที่" />
+                                )}
+                            </div>
+                        )
+                    }
+                ]}
+            />
         );
     };
 
-    // Assuming a header height of ~64px. This can be adjusted.
+    // Full page height calculation - usually 100vh minus whatever navbar height, or just 100vh if intent is maximized.
     const mapHeight = 'calc(100vh - 80px)';
-    const centerStyle = { textAlign: "center", padding: 80, height: mapHeight, display: 'flex', justifyContent: 'center', alignItems: 'center' };
-
-    if (loading) {
-        return (
-            <div style={centerStyle}>
-                <Spin size="large">
-                    <div style={{ marginTop: 40 }}>Loading map data...</div>
-                </Spin>
-            </div>
-        );
-    }
 
     return (
-        <div style={{ height: mapHeight, width: '100%', display: 'flex' }}>
-            {/* Map Section */}
-            <div style={{ flex: 1, height: '100%', position: 'relative', transition: 'width 0.3s ease' }}>
-                <Card
-                    styles={{
-                        body: {
-                            padding: 0,
-                            height: '100%',
-                        },
-                    }}
-                    style={{ height: '100%' }}
-                >
-                    <Button
-                        icon={isPanelVisible ? <MenuFoldOutlined /> : <MenuUnfoldOutlined />}
-                        onClick={() => setPanelVisible(!isPanelVisible)}
-                        style={{
-                            position: 'absolute',
-                            top: 10,
-                            right: 10,
-                            zIndex: 1000, // Ensure it's above the map tiles
-                            backgroundColor: 'rgba(255, 255, 255, 0.8)',
-                            borderColor: '#ccc'
-                        }}
-                    />
-                    <DynamicMap
-                        center={location ? [location.lat, location.lng] : undefined}
-                        zoom={location ? 11.5 : 11}
-                        layers={layers}
-                        geoObjects={geoObjects}
-                        visibleLayerIds={visibleLayerIds}
-                        onSelectObject={handleSelectObject}
-                    />
-                </Card>
-            </div>
+        <div className="dashboard-container" style={{ height: mapHeight }}>
+            <DynamicMap
+                center={location ? [location.lat, location.lng] : undefined}
+                zoom={location ? 13 : 11}
+                layers={layers}
+                geoObjects={geoObjects}
+                visibleLayerIds={visibleLayerIds}
+                onSelectObject={handleSelectObject}
+                selectedObject={selectedObject}
+            />
 
-            {/* Responsive Controls & Details Panel */}
+            {/* Create FAB */}
+            <FloatButton
+                icon={<PlusOutlined />}
+                type="primary"
+                className="map-create-fab"
+                onClick={handleCreateClick}
+                tooltip="สร้างสถานที่ใหม่"
+            />
+
+            <Modal
+                title="เลือกชั้นข้อมูล"
+                visible={isLayerSelectModalVisible}
+                onCancel={() => setLayerSelectModalVisible(false)}
+                footer={null}
+            >
+                <List
+                    dataSource={layers}
+                    renderItem={layer => (
+                        <List.Item onClick={() => handleLayerSelect(layer._id)} style={{ cursor: 'pointer' }}>
+                            <List.Item.Meta
+                                avatar={<EnvironmentOutlined style={{ color: layer.color }} />}
+                                title={layer.name}
+                            />
+                            <Button type="link">เลือก</Button>
+                        </List.Item>
+                    )}
+                />
+            </Modal>
+
+            {!isPanelVisible && (
+                <Button
+                    type="primary"
+                    icon={<MenuUnfoldOutlined />}
+                    onClick={() => setPanelVisible(true)}
+                    className="map-toggle-panel-btn"
+                />
+            )}
+
+            {/* Floating Panel (Desktop) / Drawer (Mobile) */}
             {isMobile ? (
                 <Drawer
-                    title="Controls & Details"
                     placement="bottom"
-                    onClose={() => setPanelVisible(false)}
+                    height="60vh"
                     visible={isPanelVisible}
-                    height="60%"
+                    onClose={() => setPanelVisible(false)}
+                    className="dashboard-drawer"
+                    title={panelMode === 'view' ? "การควบคุมแผนที่" : (panelMode === 'create' ? "สร้างสถานที่ใหม่" : "แก้ไขสถานที่")}
                 >
                     {renderPanelContent()}
                 </Drawer>
             ) : (
-                <div style={{
-                    width: isPanelVisible ? '350px' : '0px',
-                    transition: 'width 0.3s ease',
-                    overflow: 'hidden',
-                    height: '100%',
-                    backgroundColor: '#f0f2f5'
-                }}>
-                    <Card
-                        title="Controls & Details"
-                        style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
-                        styles={{
-                            body: {
-                                flex: 1,
-                                overflowY: 'auto',
-                                padding: '16px',
-                            },
-                        }}
-                    >
+                <div className={`dashboard-floating-panel ${!isPanelVisible ? 'hidden' : ''}`}>
+                    {/* Panel Header */}
+                    <div className="dashboard-panel-header">
+                        <span className="dashboard-panel-title">CDP PAO</span>
+                        <Button
+                            type="text"
+                            icon={<MenuFoldOutlined />}
+                            onClick={() => setPanelVisible(false)}
+                        />
+                    </div>
+
+                    {/* Panel Content - Flex Grow to take remaining space */}
+                    <div className="dashboard-panel-content">
                         {renderPanelContent()}
-                    </Card>
+                    </div>
                 </div>
             )}
         </div>

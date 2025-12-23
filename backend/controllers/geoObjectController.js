@@ -56,6 +56,7 @@ const validateProperties = (properties, fields) => {
     }
     // Check for extra properties that are not in the schema
     for (const propName in properties) {
+        if (propName === 'color') continue; // Always allow 'color' property
         if (!fields.some(f => f.name === propName)) {
             throw new Error(`Property '${propName}' is not allowed in this layer.`);
         }

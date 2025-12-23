@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Form, Input, Button, Checkbox, Row, Col, message, Spin } from 'antd';
+import { Form, Input, Button, Checkbox, Row, Col, Spin } from 'antd';
 import { createRole, updateRole } from '../api/role';
 import { getLayers } from '../api/layer';
+import { useMessageApi } from '../contexts/MessageContext';
 
 const PERMISSIONS = ['read', 'create', 'update', 'delete'];
 
@@ -9,6 +10,7 @@ const RoleForm = ({ role, onClose }) => {
     const [form] = Form.useForm();
     const [layers, setLayers] = useState([]);
     const [loading, setLoading] = useState(false);
+    const messageApi = useMessageApi();
 
     useEffect(() => {
         const fetchLayers = async () => {
@@ -16,7 +18,7 @@ const RoleForm = ({ role, onClose }) => {
                 const layersRes = await getLayers();
                 setLayers(layersRes.data);
             } catch (error) {
-                message.error('Failed to fetch layers for permissions.');
+                messageApi.error('Failed to fetch layers for permissions.');
             }
         };
 
@@ -50,14 +52,14 @@ const RoleForm = ({ role, onClose }) => {
         try {
             if (role) {
                 await updateRole(role._id, roleData);
-                message.success('Role updated successfully.');
+                messageApi.success('Role updated successfully.');
             } else {
                 await createRole(roleData);
-                message.success('Role created successfully.');
+                messageApi.success('Role created successfully.');
             }
             onClose();
         } catch (error) {
-            message.error('Failed to save role.');
+            messageApi.error('Failed to save role.');
         } finally {
             setLoading(false);
         }
@@ -79,7 +81,7 @@ const RoleForm = ({ role, onClose }) => {
                     <div key={layer._id}>
                         <h4>{layer.name}</h4>
                         <Form.Item name={['permissions', layer._id]}>
-                             <Checkbox.Group>
+                            <Checkbox.Group>
                                 <Row>
                                     {PERMISSIONS?.map(permission => (
                                         <Col span={6} key={permission}>

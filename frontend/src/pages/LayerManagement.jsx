@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Table, Button, Modal, Form, message, Popconfirm, Space, Upload } from 'antd';
+import { Table, Button, Modal, Form, Popconfirm, Space, Upload } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, UploadOutlined, DatabaseOutlined } from '@ant-design/icons';
 import { Link } from 'react-router-dom';
 import { getLayers, createLayer, updateLayer, deleteLayer, importLayer, uploadGeoJsonToLayer } from '../api/layer';
 import LayerForm from '../components/LayerForm';
+import { useMessageApi } from '../contexts/MessageContext';
 
 const LayerManagement = () => {
     const [layers, setLayers] = useState([]);
@@ -15,6 +16,7 @@ const LayerManagement = () => {
     const [fileList, setFileList] = useState([]);
     const [editingLayer, setEditingLayer] = useState(null);
     const [form] = Form.useForm();
+    const messageApi = useMessageApi();
 
     const fetchLayers = useCallback(async () => {
         setLoading(true);
@@ -22,7 +24,7 @@ const LayerManagement = () => {
             const res = await getLayers();
             setLayers(res.data);
         } catch (error) {
-            message.error('Failed to fetch layers.');
+            messageApi.error('Failed to fetch layers.');
             console.error(error);
         } finally {
             setLoading(false);
@@ -51,16 +53,16 @@ const LayerManagement = () => {
         try {
             if (editingLayer) {
                 await updateLayer(editingLayer._id, values);
-                message.success('Layer updated successfully!');
+                messageApi.success('Layer updated successfully!');
             } else {
                 await createLayer(values);
-                message.success('Layer created successfully!');
+                messageApi.success('Layer created successfully!');
             }
             fetchLayers();
             handleCancel();
         } catch (error) {
             const errorMessage = error.response?.data?.error || 'An error occurred.';
-            message.error(errorMessage);
+            messageApi.error(errorMessage);
             console.error(error);
         }
     };
@@ -68,10 +70,10 @@ const LayerManagement = () => {
     const handleDelete = async (id) => {
         try {
             await deleteLayer(id);
-            message.success('Layer deleted successfully!');
+            messageApi.success('Layer deleted successfully!');
             fetchLayers();
         } catch (error) {
-            message.error('Failed to delete layer.');
+            messageApi.error('Failed to delete layer.');
             console.error(error);
         }
     };
@@ -87,7 +89,7 @@ const LayerManagement = () => {
 
     const handleImport = async () => {
         if (fileList.length === 0) {
-            message.error("Please select a GeoJSON file to import.");
+            messageApi.error("Please select a GeoJSON file to import.");
             return;
         }
         const formData = new FormData();
@@ -96,12 +98,12 @@ const LayerManagement = () => {
         setLoading(true);
         try {
             const res = await importLayer(formData);
-            message.success(res.data.message || "Layer imported successfully!");
+            messageApi.success(res.data.message || "Layer imported successfully!");
             handleImportCancel();
             fetchLayers();
         } catch (error) {
             const errorMessage = error.response?.data?.error || 'Failed to import layer.';
-            message.error(errorMessage);
+            messageApi.error(errorMessage);
         } finally {
             setLoading(false);
         }
@@ -120,11 +122,11 @@ const LayerManagement = () => {
 
     const handleUpload = async () => {
         if (fileList.length === 0) {
-            message.error("Please select a GeoJSON file to upload.");
+            messageApi.error("Please select a GeoJSON file to upload.");
             return;
         }
         if (!uploadTargetLayer) {
-            message.error("No layer selected for upload.");
+            messageApi.error("No layer selected for upload.");
             return;
         }
 
@@ -134,12 +136,12 @@ const LayerManagement = () => {
         setLoading(true);
         try {
             const res = await uploadGeoJsonToLayer(uploadTargetLayer._id, formData);
-            message.success(res.data.message || "Layer data uploaded successfully!");
+            messageApi.success(res.data.message || "Layer data uploaded successfully!");
             handleUploadCancel();
             fetchLayers();
         } catch (error) {
             const errorMessage = error.response?.data?.error || 'Failed to upload data.';
-            message.error(errorMessage);
+            messageApi.error(errorMessage);
         } finally {
             setLoading(false);
         }

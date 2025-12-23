@@ -7,7 +7,8 @@ const layerRoutes = require('../routes/layers');
 const { authenticate, hasPermission } = require('../middleware/auth');
 
 // Mocking the new middleware
-const mockLayer1Id = new mongoose.Types.ObjectId();
+// Mocking the new middleware
+const mockLayer1Id = '507f1f77bcf86cd799439011';
 jest.mock('../middleware/auth', () => ({
     authenticate: jest.fn((req, res, next) => {
         // Mock user population based on token
@@ -16,7 +17,8 @@ jest.mock('../middleware/auth', () => ({
                 id: 'adminId',
                 role: {
                     name: 'admin',
-                    permissions: [] // Admin doesn't need specific permissions
+                    permissions: [], // Admin doesn't need specific permissions
+                    globalActions: ['layers:create', 'roles:create'] // Add global actions for admin
                 }
             };
         } else if (req.headers.authorization === 'Bearer user_token') {
@@ -27,6 +29,7 @@ jest.mock('../middleware/auth', () => ({
                     permissions: [
                         // Give user 'view' permission on a specific layer for testing GET
                         { layer: { _id: mockLayer1Id }, actions: ['view'] },
+                        { layer: { _id: '507f1f77bcf86cd799439012' }, actions: ['create'] } // Random one
                     ]
                 }
             };
@@ -43,11 +46,18 @@ jest.mock('../middleware/auth', () => ({
         if (action === 'view' && resourceType === 'Layer' && user.role.permissions.some(p => p.actions.includes('view'))) {
             return next();
         }
-        if (action === 'create' || action === 'delete' || action === 'edit') {
+        if (action === 'create' || action === 'delete' || action === 'edit' || action === 'update') {
+            // Basic deny for user unless specific
             return res.status(403).json({ error: 'Forbidden' });
         }
         next();
     }),
+    requireAny: jest.fn(() => (req, res, next) => next()),
+    hasGlobal: jest.fn(() => (req, res, next) => {
+        // Simple mock allowing admin
+        if (req.user && req.user.role.name === 'admin') return next();
+        return res.status(403).json({ error: 'Forbidden' });
+    })
 }));
 
 const app = express();

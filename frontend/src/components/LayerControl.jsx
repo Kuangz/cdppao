@@ -26,7 +26,7 @@ const LayerControl = ({ layers, visibleLayerIds, onVisibilityChange, onCreateObj
     };
 
     return (
-        <Card title="Layers" size="small">
+        <Card size="small">
             <List
                 dataSource={layers}
                 renderItem={layer => (

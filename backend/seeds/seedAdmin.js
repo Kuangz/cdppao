@@ -20,6 +20,7 @@ if (!MONGO_URI) {
     process.exit(1);
 }
 
+// Verified global actions list covers all used permissions
 const ADMIN_GLOBAL_ACTIONS = [
     'users:list', 'users:read', 'users:create', 'users:update', 'users:delete',
     'roles:list', 'roles:read', 'roles:create', 'roles:update', 'roles:delete',

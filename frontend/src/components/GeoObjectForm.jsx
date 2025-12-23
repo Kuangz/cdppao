@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Form, Input, InputNumber, Switch, DatePicker, Button, Upload, Select, message, Row, Col } from 'antd';
+import { Form, Input, InputNumber, Switch, DatePicker, Button, Upload, Select, Row, Col, ColorPicker } from 'antd';
 import { UploadOutlined } from '@ant-design/icons';
 import LocationPicker from './LocationPicker';
 import { publicUrlFromPath, toUploadFileList, validateImageBeforeUpload } from '../utils/imageHelpers';
+import { useMessageApi } from '../contexts/MessageContext';
 
 /** ========== GeoJSONLocationPicker ========== */
 const GeoJSONLocationPicker = ({ value, onChange, geometryType, isEditMode }) => {
@@ -106,6 +107,7 @@ const renderField = (field) => {
 const GeoObjectForm = ({ form, layers = [], layer = null, onFinish, initialValues, onCancel }) => {
     // edit mode: มี layer (ล็อก), create mode: ไม่มี layer แต่มี layers ให้เลือก
     const isEditMode = !!layer;
+    const messageApi = useMessageApi();
 
     // preload images เมื่อแก้ไข (initialValues.images เป็นพาธ/URL จากแบ็กเอนด์)
     useEffect(() => {
@@ -231,7 +233,7 @@ const GeoObjectForm = ({ form, layers = [], layer = null, onFinish, initialValue
                     accept="image/jpeg,image/png,image/webp"
                     beforeUpload={(file) => {
                         const { ok, message: msg } = validateImageBeforeUpload({ file, maxMB: 10 });
-                        if (!ok) message.error(msg);
+                        if (!ok) messageApi.error(msg);
                         return false; // block auto-upload; keep in fileList
                     }}
                     onPreview={(file) => {
@@ -240,6 +242,16 @@ const GeoObjectForm = ({ form, layers = [], layer = null, onFinish, initialValue
                     }}>
                     <Button icon={<UploadOutlined />}></Button>
                 </Upload>
+            </Form.Item>
+
+            {/* Custom Color Override */}
+            <Form.Item
+                name={['properties', 'color']}
+                label="Color Override"
+                tooltip="Override the default layer color for this specific object."
+                getValueFromEvent={(color) => (typeof color === 'string' ? color : color.toHexString())}
+            >
+                <ColorPicker format="hex" showText />
             </Form.Item>
 
             {/* ฟิลด์ตามเลเยอร์ */}

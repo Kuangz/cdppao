@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
-import { Table, message, Spin, Button, Modal, Popconfirm, Space, Form, Typography, Breadcrumb } from 'antd';
+import { Table, Spin, Button, Modal, Popconfirm, Space, Form, Typography, Breadcrumb } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import { getLayerById } from '../api/layer';
 import { getGeoObjectsByLayer, createGeoObject, updateGeoObject, deleteGeoObject } from '../api/geoObject';
 import GeoObjectForm from '../components/GeoObjectForm';
 import { splitImages, toUploadFileList } from '../utils/imageHelpers';
+import { useMessageApi } from '../contexts/MessageContext';
 
 const { Title } = Typography;
 
@@ -20,6 +21,7 @@ const GeoObjectManagementPage = () => {
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [editingObject, setEditingObject] = useState(null);
     const [form] = Form.useForm();
+    const messageApi = useMessageApi();
 
     const fetchLayerDetails = useCallback(async () => {
         setLoading(true);
@@ -30,7 +32,7 @@ const GeoObjectManagementPage = () => {
             const objectsRes = await getGeoObjectsByLayer(layerId);
             setObjects(objectsRes.data || []);
         } catch (error) {
-            message.error('Failed to fetch layer details or objects.');
+            messageApi.error('Failed to fetch layer details or objects.');
             navigate('/admin/layers');
         } finally {
             setLoading(false);
@@ -62,7 +64,7 @@ const GeoObjectManagementPage = () => {
 
     const handleFinish = async (values) => {
         if (!layer?._id) {
-            message.error('Layer not ready.');
+            messageApi.error('Layer not ready.');
             return;
         }
 
@@ -92,17 +94,17 @@ const GeoObjectManagementPage = () => {
 
             if (editingObject) {
                 await updateGeoObject(editingObject._id, formData);
-                message.success('Object updated successfully!');
+                messageApi.success('Object updated successfully!');
             } else {
                 await createGeoObject(formData);
-                message.success('Object created successfully!');
+                messageApi.success('Object created successfully!');
             }
 
             await fetchLayerDetails();
             handleCancel();
         } catch (error) {
             const errorMessage = error?.response?.data?.error || 'An error occurred.';
-            message.error(errorMessage);
+            messageApi.error(errorMessage);
         } finally {
             setLoading(false);
         }
@@ -112,10 +114,10 @@ const GeoObjectManagementPage = () => {
         setLoading(true);
         try {
             await deleteGeoObject(id);
-            message.success('Object deleted successfully!');
+            messageApi.success('Object deleted successfully!');
             await fetchLayerDetails();
         } catch (error) {
-            message.error('Failed to delete object.');
+            messageApi.error('Failed to delete object.');
         } finally {
             setLoading(false);
         }
